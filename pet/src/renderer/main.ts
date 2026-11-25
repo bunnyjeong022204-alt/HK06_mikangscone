@@ -44,6 +44,7 @@ interface Companion {
 
 const DEPTH_WALK_LEG_MS = 1050;
 const DEPTH_WALK_DISTANCE = 96;
+const HOVER_EXIT_PADDING = 5;
 
 const REACTION_LINES = {
   grab: ['으앗, 잡지 마아!', '잠깐만, 나 내려갈래!', '히익! 발이 땅에서 떨어졌어!'],
@@ -100,6 +101,7 @@ async function main(): Promise<void> {
   let pointer: Vec2 = { x: -1000, y: -1000 };
   let held: { pet: Companion; pointerId: number; start: Vec2; offset: Vec2; since: number; dragging: boolean; samples: PointerSample[] } | null = null;
   let clickThrough = true;
+  let hoveredPet: Companion | undefined;
   let toyEnabled = false;
   let toyNextPlayAt = 0;
   let lastPointerAt = -Infinity;
@@ -121,7 +123,7 @@ async function main(): Promise<void> {
   const petMenu = new PetQuickMenu(toggleToy);
   const emptyPaper = new EmptyRosterPaper((anchor) => petMenu.open(anchor, false, false, true));
   let nextPointerPoll = 0;
-  const pollPointer = () => clickThrough || pets.some((pet) => pet.chasing);
+  const pollPointer = () => !held && (clickThrough || !!hoveredPet || pets.some((pet) => pet.chasing));
   document.addEventListener('pointermove', (event) => {
     if (sceneReady && pets.length === 0 && event.isPrimary) {
       pointer = { x: event.clientX, y: event.clientY };
@@ -254,7 +256,10 @@ async function main(): Promise<void> {
     const pos = petPosition(pet);
     const scale = pet.species.behavior.spriteScale;
     const box = pose && frame ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize(pet)) : renderer.getSpriteBounds(def, pos, scale);
-    return pointer.x >= box.x && pointer.x <= box.x + box.width && pointer.y >= box.y && pointer.y <= box.y + box.height;
+    // Keep the current target through small frame-to-frame changes at its edge.
+    const padding = pet === hoveredPet ? HOVER_EXIT_PADDING : 0;
+    return pointer.x >= box.x - padding && pointer.x <= box.x + box.width + padding &&
+      pointer.y >= box.y - padding && pointer.y <= box.y + box.height + padding;
   });
   function beginDrag(grab: NonNullable<typeof held>) {
     grab.dragging = true;
@@ -687,11 +692,11 @@ async function main(): Promise<void> {
   }
 
   function updateMouseTarget() {
-    const hovered = hit();
+    hoveredPet = hit();
     const capturingWheel = toyEnabled && pointerInArea() && !!toyOwner()?.species.fishingToy;
-    const ignore = !held && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hovered;
+    const ignore = !held && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hoveredPet;
     if (ignore !== clickThrough) { clickThrough = ignore; window.petAPI.setClickThrough(ignore); }
-    canvas.style.cursor = held?.dragging ? 'grabbing' : hovered ? 'grab' : 'default';
+    canvas.classList.toggle('is-dragging', !!held?.dragging);
   }
 
   function followCursor(pet: Companion, delta: number) {
@@ -720,8 +725,8 @@ async function main(): Promise<void> {
     renderer.clear();
     const empty = sceneReady && pets.length === 0;
     emptyPaper.update(empty, petMenu.isOpen, bounds.width, bounds.height, delta);
-    // Click-through windows can miss forwarded movement, including when a pet
-    // walks under a stationary cursor. Use the system cursor until hit testing resumes.
+    // Forwarded movement can be missed when a pet walks under a stationary cursor
+    // or the cursor leaves the whole work area from an interactive pet.
     if (sceneReady && pollPointer() && !document.hidden && now >= nextPointerPoll && now - lastPointerAt > 90) {
       nextPointerPoll = now + 60;
       void window.petAPI.getCursorPoint().then((point) => {

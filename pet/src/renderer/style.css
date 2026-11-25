@@ -17,7 +17,10 @@ body {
   display: block;
   width: 100vw;
   height: 100vh;
+  cursor: default;
 }
+
+#pet-canvas.is-dragging { cursor: grabbing; }
 
 .speech {
   position: absolute;
