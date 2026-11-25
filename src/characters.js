@@ -85,6 +85,7 @@
       return `<div class="c-custom"><img src="${customSrc}" alt="" draggable="false"><span class="c-custom-shadow"></span></div>`;
     }
     const c = CHARS[id] || CHARS.mikang;
+    if (c.className) return `<span class="character-image ${c.className}" aria-hidden="true"></span>`;
     return `<svg class="c-svg" viewBox="0 0 100 100" aria-hidden="true">${c.svg()}</svg>`;
   }
   const charName = (S) => (S.settings.petName || '').trim() || (CHARS[S.settings.character] || CHARS.mikang).name;

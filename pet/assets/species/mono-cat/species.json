@@ -1,0 +1,156 @@
+{
+  "id": "mono-cat",
+  "displayName": "까망이",
+  "version": "1.0.0",
+  "animations": {
+    "idle": {
+      "sheet": "sprites/idle.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 4,
+      "loop": true,
+      "leftSheet": "sprites/idle-left.png"
+    },
+    "walk": {
+      "sheet": "sprites/walk-right.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 10,
+      "loop": true,
+      "leftSheet": "sprites/walk-left.png"
+    },
+    "sleep": {
+      "sheet": "sprites/sleep.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 3,
+      "loop": true,
+      "leftSheet": "sprites/sleep-left.png"
+    },
+    "dragged": {
+      "sheet": "sprites/dragged.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 9,
+      "loop": true,
+      "authoredGrip": true,
+      "leftSheet": "sprites/dragged-left.png"
+    },
+    "react": {
+      "sheet": "sprites/react.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 9,
+      "loop": false,
+      "leftSheet": "sprites/react-left.png"
+    }
+  },
+  "motions": {
+    "jump": {
+      "sheet": "sprites/jump.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 12,
+      "loop": false,
+      "leftSheet": "sprites/jump-left.png"
+    },
+    "land": {
+      "sheet": "sprites/land.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 18,
+      "loop": false,
+      "leftSheet": "sprites/land-left.png"
+    },
+    "fly": {
+      "sheet": "sprites/fly.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 8,
+      "loop": true,
+      "leftSheet": "sprites/fly-left.png"
+    },
+    "look": {
+      "sheet": "sprites/look.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "climb": {
+      "sheet": "sprites/climb.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 10,
+      "loop": true,
+      "mirrorWhen": "right",
+      "wallInsets": {
+        "left": 5,
+        "right": 5
+      }
+    },
+    "wallIdle": {
+      "sheet": "sprites/wall-idle.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 4,
+      "loop": true,
+      "mirrorWhen": "right",
+      "wallInsets": {
+        "left": 5,
+        "right": 5
+      }
+    },
+    "wallImpact": {
+      "sheet": "sprites/wall-impact.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 22,
+      "loop": false,
+      "mirrorWhen": "right"
+    },
+    "wallFall": {
+      "sheet": "sprites/wall-fall.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 12,
+      "loop": true,
+      "mirrorWhen": "right"
+    },
+    "recover": {
+      "sheet": "sprites/recover.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 11,
+      "loop": false
+    }
+  },
+  "behavior": {
+    "walkSpeedPxPerSec": 64,
+    "idleMinMs": 1600,
+    "idleMaxMs": 3300,
+    "walkMinMs": 3800,
+    "walkMaxMs": 7200,
+    "spriteScale": 0.625,
+    "personality": "curious"
+  },
+  "attribution": {
+    "author": "mikangscone (모노 스케치)",
+    "license": "Original artwork drawn for this project",
+    "sourceUrl": "https://github.com/forethinkfi/HK06_mikangscone/tree/black-and-white/themes/mono-sketch"
+  }
+}

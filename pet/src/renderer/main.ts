@@ -666,7 +666,8 @@ async function main(): Promise<void> {
       });
     }
     updateToy(now, delta);
-    if (held && !held.dragging && now - held.since >= 200 && held.pet.species.animations.dragged?.motion === 'wriggle') {
+    const heldAnimation = held?.pet.species.animations.dragged;
+    if (held && !held.dragging && now - held.since >= 200 && (heldAnimation?.motion === 'wriggle' || heldAnimation?.authoredGrip)) {
       beginDrag(held);
       positionHeld(held);
     }

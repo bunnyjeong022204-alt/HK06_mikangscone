@@ -1,0 +1,142 @@
+{
+  "id": "pastel-octopus",
+  "displayName": "문어비서",
+  "version": "1.0.0",
+  "animations": {
+    "idle": {
+      "sheet": "sprites/idle.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 5,
+      "loop": true
+    },
+    "walk": {
+      "sheet": "sprites/walk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 12,
+      "fps": 13,
+      "loop": true,
+      "mirrorWhen": "left"
+    },
+    "sleep": {
+      "sheet": "sprites/sleep.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 4,
+      "loop": true,
+      "effect": "sleep"
+    },
+    "dragged": {
+      "sheet": "sprites/dragged.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 10,
+      "fps": 12,
+      "loop": true,
+      "authoredGrip": true
+    },
+    "react": {
+      "sheet": "sprites/react.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 10,
+      "loop": false
+    }
+  },
+  "behavior": {
+    "walkSpeedPxPerSec": 45,
+    "idleMinMs": 1800,
+    "idleMaxMs": 3700,
+    "walkMinMs": 4500,
+    "walkMaxMs": 8500,
+    "spriteScale": 0.552
+  },
+  "attribution": {
+    "author": "진현주 (파스텔 테마)",
+    "license": "Original artwork drawn for this project"
+  },
+  "motions": {
+    "jump": {
+      "sheet": "sprites/jump.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 13,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "land": {
+      "sheet": "sprites/land.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 18,
+      "loop": false
+    },
+    "fly": {
+      "sheet": "sprites/fly.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 12,
+      "loop": true,
+      "mirrorWhen": "left"
+    },
+    "climb": {
+      "sheet": "sprites/climb.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 6,
+      "fps": 9,
+      "loop": true,
+      "mirrorWhen": "right",
+      "wallInsets": {
+        "left": 5,
+        "right": 5
+      }
+    },
+    "wallIdle": {
+      "sheet": "sprites/wall-idle.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 4,
+      "loop": true,
+      "mirrorWhen": "right",
+      "wallInsets": {
+        "left": 5,
+        "right": 5
+      }
+    },
+    "wallImpact": {
+      "sheet": "sprites/wall-impact.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 22,
+      "loop": false,
+      "mirrorWhen": "right"
+    },
+    "wallFall": {
+      "sheet": "sprites/wall-fall.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 12,
+      "loop": true,
+      "mirrorWhen": "right"
+    },
+    "recover": {
+      "sheet": "sprites/recover.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 11,
+      "loop": false
+    }
+  }
+}
