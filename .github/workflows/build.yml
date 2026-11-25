@@ -1,0 +1,36 @@
+# Windows(.exe 설치 파일)와 macOS(.dmg)를 GitHub에서 자동으로 만든다.
+# Actions 탭 → "Build desktop app" → Run workflow 로 실행하거나, v* 태그를 올리거나, 작업 브랜치에 앱 코드가 바뀌면 실행된다.
+name: Build desktop app
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+    branches: ['claude/quirky-mayer-sc9las']
+    paths: ['src/**', 'electron/**', 'pet/**', 'build/**', 'package.json', 'package-lock.json', '.github/workflows/build.yml']
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build installer
+        run: npm run dist -- --publish never
+        env:
+          # 인증서 없이 빌드: Windows는 서명 안 함, macOS는 package.json의 identity "-" 로 임시(ad-hoc) 서명
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ runner.os == 'Windows' && 'false' || 'true' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MikangMemo-jhj-${{ runner.os }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+          if-no-files-found: error

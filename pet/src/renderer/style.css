@@ -1,0 +1,37 @@
+@font-face {
+  font-family: 'Dongle';
+  src: url('./fonts/Dongle-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+#pet-canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+.speech {
+  position: absolute;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 140px;
+  padding: 6px 11px;
+  border: 1px solid #d9dfd9;
+  border-radius: 18px 18px 18px 5px;
+  background: #fffdf5;
+  color: #263e43;
+  font: 400 23px/1.05 'Dongle', sans-serif;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  box-shadow: 0 5px 18px #00000018;
+  pointer-events: none;
+}
