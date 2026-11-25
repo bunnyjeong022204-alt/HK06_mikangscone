@@ -123,7 +123,7 @@
   border-radius: 2px;
   box-shadow: -12px 12px 0 #cbbfe6, 0 14px 26px #6c5f8a2e;
 }
-:root[data-theme-pack="pastel"] .sheet[data-paper="layered"] { transform: translateX(var(--tx)) rotate(.6deg); }
+:root[data-theme-pack="pastel"] .sheet[data-paper="layered"] { transform: rotate(.6deg); }
 /* 6) 모서리 테이프 두 개 */
 :root[data-theme-pack="pastel"] .sheet[data-paper="corner"] .card { border-radius: 2px; }
 :root[data-theme-pack="pastel"] .sheet[data-paper="corner"]::before { top: -6px; left: auto; right: -26px; transform: rotate(38deg); width: 74px; }

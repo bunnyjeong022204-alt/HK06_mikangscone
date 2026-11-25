@@ -132,10 +132,6 @@
   --brick: #53b9ed;
   --brick-face: #f2faff;
 }
-[data-theme-pack="blocks"] .overview-card.overview-record {
-  --brick: #ee96ce;
-  --brick-face: #fff1fa;
-}
 [data-theme-pack="blocks"] .overview-card.overview-ai {
   --brick: #b6a0f3;
   --brick-face: #f7f3ff;
@@ -183,7 +179,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   [data-theme-pack="blocks"] .dock .tab { transition: none; }
-  [data-theme-pack="blocks"] .dock .tab.sub:not(.ring) { animation: none; opacity: 1; }
 }
 [data-theme-pack="blocks"] .btn.primary,
 [data-theme-pack="blocks"] .seg button[aria-pressed="true"] {

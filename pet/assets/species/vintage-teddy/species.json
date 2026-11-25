@@ -15,8 +15,8 @@
       "sheet": "sprites/walk.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 12,
-      "fps": 12,
+      "frameCount": 14,
+      "fps": 15,
       "loop": true,
       "mirrorWhen": "left"
     },
@@ -125,9 +125,26 @@
       "frameCount": 5,
       "fps": 11,
       "loop": false
+    },
+    "backWalk": {
+      "sheet": "sprites/backWalk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 14,
+      "fps": 15,
+      "loop": true
+    },
+    "frontWalk": {
+      "sheet": "sprites/walk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 14,
+      "fps": 15,
+      "loop": true
     }
   },
   "behavior": {
+    "doubleClick": "hearts",
     "walkSpeedPxPerSec": 47,
     "idleMinMs": 1800,
     "idleMaxMs": 4100,

@@ -118,15 +118,9 @@
     return out;
   }
 
-  /** 받아쓰기 원문을 메모 본문 모양으로 다듬는다 (AI가 없을 때). */
-  function tidyTranscript(t) {
-    return (t || '').replace(/\s+/g, ' ').split(/(?<=[.!?。])\s+|(?<=(?:요|다|죠|까))\s+(?=[가-힣A-Za-z0-9])/)
-      .map((s) => s.trim()).filter(Boolean).map((s) => '- ' + s).join('\n');
-  }
-
   function localAnalyze(text, title, now = new Date()) {
     return { keyword: guessKeyword(text, title), summary: summarize(text), events: parseEvents((title ? title + '\n' : '') + text, now), src: 'local' };
   }
 
-  return { DAYMS, WD, pad, startOfDay, addDays, fmtTime, fmtWhen, fmtIn, fmtDate, isoLocal, guessKeyword, summarize, parseLine, parseEvents, tidyTranscript, localAnalyze, stripBullet };
+  return { DAYMS, WD, pad, startOfDay, addDays, fmtTime, fmtWhen, fmtIn, fmtDate, isoLocal, guessKeyword, summarize, parseLine, parseEvents, localAnalyze, stripBullet };
 });

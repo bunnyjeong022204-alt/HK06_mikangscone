@@ -249,6 +249,7 @@
     "fish": "sprites/fishing-fish.png"
   },
   "behavior": {
+    "doubleClick": "chase",
     "walkSpeedPxPerSec": 61,
     "idleMinMs": 1400,
     "idleMaxMs": 3100,

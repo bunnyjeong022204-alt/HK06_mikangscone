@@ -10,7 +10,7 @@ import {
 import { registerAssetProtocolScheme, registerAssetProtocolHandler } from './assetProtocol';
 import { ProgressionTracker } from './progressionTracker';
 import { StatsTracker } from './statsTracker';
-import { AppSettings } from './appSettings';
+import { AppSettings, DEFAULT_SPECIES_ID } from './appSettings';
 import { loadCompanionScene } from './sceneLoader';
 import fs from 'node:fs';
 import { getLocalSpeciesRoot } from './speciesLoader';
@@ -18,8 +18,7 @@ import { IPC } from '../shared/ipcContract';
 import { saveImagePet, runPetMenuAction } from './petMenu';
 import type { SpeciesConfig } from '../shared/speciesSchema';
 
-const DEFAULT_SPECIES_ID = 'mikkang';
-const FALLBACK_SPECIES_ID = 'placeholder';
+const FALLBACK_SPECIES_ID = 'block-dino';
 
 registerAssetProtocolScheme();
 

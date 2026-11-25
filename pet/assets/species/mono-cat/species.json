@@ -137,9 +137,26 @@
       "frameCount": 5,
       "fps": 11,
       "loop": false
+    },
+    "frontWalk": {
+      "sheet": "sprites/frontWalk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 10,
+      "fps": 12,
+      "loop": true
+    },
+    "backWalk": {
+      "sheet": "sprites/backWalk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 10,
+      "fps": 12,
+      "loop": true
     }
   },
   "behavior": {
+    "doubleClick": "chase",
     "walkSpeedPxPerSec": 64,
     "idleMinMs": 1600,
     "idleMaxMs": 3300,

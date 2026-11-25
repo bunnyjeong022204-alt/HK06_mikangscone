@@ -60,6 +60,7 @@
     }
   },
   "behavior": {
+    "doubleClick": "fire",
     "walkSpeedPxPerSec": 45,
     "idleMinMs": 1800,
     "idleMaxMs": 3700,

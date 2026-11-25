@@ -23,7 +23,7 @@
     list: () => list.slice(),
     get: (id) => list.find((x) => x.id === id) || list[0],
   };
-  // 기본 테마: 지금의 세이지 그린 디자인 + 미깡이
-  MemoThemes.register({ id: 'default', name: '기본 (세이지)', author: '팀 공통', preview: ['#ddebe1', '#f8eaa5', '#f0c9c4', '#cfdfdc', '#4a644c'], character: 'mikang', petSpecies: 'mikkang' });
+  // 기본 테마: 세이지 그린 디자인과 기본 캐릭터
+  MemoThemes.register({ id: 'default', name: '기본 (세이지)', author: '팀 공통', preview: ['#ddebe1', '#f8eaa5', '#f0c9c4', '#cfdfdc', '#4a644c'], character: root.Chars.defaultId, petSpecies: root.Chars.defaultId });
   root.MemoThemes = MemoThemes;
 })(typeof self !== 'undefined' ? self : this);

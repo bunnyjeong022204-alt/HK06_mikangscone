@@ -48,6 +48,7 @@
     }
   },
   "behavior": {
+    "doubleClick": "ink",
     "walkSpeedPxPerSec": 45,
     "idleMinMs": 1800,
     "idleMaxMs": 3700,
@@ -137,6 +138,22 @@
       "frameCount": 5,
       "fps": 11,
       "loop": false
+    },
+    "backWalk": {
+      "sheet": "sprites/backWalk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 12,
+      "fps": 13,
+      "loop": true
+    },
+    "frontWalk": {
+      "sheet": "sprites/walk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 12,
+      "fps": 13,
+      "loop": true
     }
   }
 }

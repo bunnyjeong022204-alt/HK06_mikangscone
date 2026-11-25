@@ -70,8 +70,7 @@
       ],
       "icon": "build/icon.png",
       "extendInfo": {
-        "LSUIElement": true,
-        "NSMicrophoneUsageDescription": "녹음 메모를 받아쓰기 위해 마이크를 사용해요."
+        "LSUIElement": true
       },
       "identity": null,
       "artifactName": "${productName}-jhj-${version}-mac-${arch}.${ext}"

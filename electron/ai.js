@@ -1,7 +1,5 @@
-// AI 비서: 메모 정리(Claude)와 녹음 받아쓰기(OpenAI 음성 인식).
+// AI 비서: 메모 정리(Claude).
 // 키는 메인 프로세스에서만 쓰고 화면 코드(렌더러)로는 보내지 않는다.
-const fs = require('fs');
-const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const MODEL = 'claude-opus-5-5';
@@ -36,11 +34,10 @@ const SCHEMA = {
   },
 };
 
-const SYSTEM = `너는 사용자의 바탕화면에 사는 메모 비서 캐릭터야. 사용자가 적은 메모, 녹음 받아쓰기, 또는 부탁을 받아서 메모지 한 장으로 정리해.
+const SYSTEM = `너는 사용자의 바탕화면에 사는 메모 비서 캐릭터야. 사용자가 적은 메모나 부탁을 받아서 메모지 한 장으로 정리해.
 - 상대적인 날짜 표현(오늘, 내일, 모레, 이번 주 금요일, 다음 주 월요일, 3일 뒤 등)은 아래 "현재 시각"을 기준으로 실제 날짜로 계산해. 항상 미래 시점이어야 해.
 - "12시"처럼 오전/오후가 없으면 상식적으로 해석해 (1~6시는 보통 오후, 12시는 정오).
 - 시간이 없고 날짜만 있으면 all_day=true, when은 그날 09:00.
-- 녹음 받아쓰기라면 말버릇·반복을 빼고 결정사항, 할 일, 기억할 내용 위주로 정리해.
 - 사진이 함께 오면 사진 속 글(포스터, 공지, 화이트보드, 영수증 등)의 날짜·시간·할 일도 읽어서 정리해.
 - 원문에 없는 사실은 지어내지 마.`;
 
@@ -52,7 +49,7 @@ function nowContext() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())} (${wd}요일, ${tz})`;
 }
 
-const KIND_LABEL = { memo: '사용자가 직접 쓴 메모', transcript: '녹음을 받아쓴 원문', command: '사용자가 비서에게 한 부탁 (메모로 만들어 줘)' };
+const KIND_LABEL = { memo: '사용자가 직접 쓴 메모', command: '사용자가 비서에게 한 부탁 (메모로 만들어 줘)' };
 
 /** 메모에 붙은 사진(data:image/jpeg;base64,...)을 Claude 이미지 입력으로 바꾼다. */
 function imageBlocks(images) {
@@ -86,26 +83,6 @@ ${text}
   return { ...j, src: 'claude' };
 }
 
-/** 녹음 파일 받아쓰기 (OpenAI 음성 인식 API). */
-async function transcribe(apiKey, filePath) {
-  const buf = fs.readFileSync(filePath);
-  const ext = path.extname(filePath).slice(1) || 'webm';
-  const form = new FormData();
-  form.append('file', new Blob([buf], { type: `audio/${ext}` }), `memo.${ext}`);
-  form.append('model', 'whisper-1');
-  form.append('language', 'ko');
-  const r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-    method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form,
-  });
-  if (!r.ok) {
-    let msg = `받아쓰기 실패 (${r.status})`;
-    try { const e = await r.json(); if (e.error && e.error.message) msg += ': ' + e.error.message; } catch {}
-    throw new Error(msg);
-  }
-  const j = await r.json();
-  return String(j.text || '').trim();
-}
-
 function describeError(e) {
   if (e instanceof Anthropic.AuthenticationError) return 'Claude API 키가 올바르지 않아요.';
   if (e instanceof Anthropic.RateLimitError) return '요청이 많아 잠시 뒤에 다시 시도해 주세요.';
@@ -132,17 +109,11 @@ async function summarizeAll(apiKey, { notes = [] }) {
 }
 
 /** 저장한 키가 실제로 동작하는지 확인 (모델 정보 조회만 하므로 비용이 들지 않는다) */
-async function testKey(name, apiKey) {
+async function testKey(apiKey) {
   if (!apiKey) return { ok: false, error: '저장된 키가 없어요.' };
   try {
-    if (name === 'anthropic') {
-      const client = new Anthropic({ apiKey, timeout: 20000, maxRetries: 0 });
-      await client.models.retrieve(MODEL);
-      return { ok: true };
-    }
-    const r = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${apiKey}` } });
-    if (r.status === 401) return { ok: false, error: 'OpenAI 키가 올바르지 않아요. 키를 다시 복사해 주세요.' };
-    if (!r.ok) return { ok: false, error: `OpenAI 연결 실패 (${r.status})` };
+    const client = new Anthropic({ apiKey, timeout: 20000, maxRetries: 0 });
+    await client.models.retrieve(MODEL);
     return { ok: true };
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) return { ok: false, error: 'Claude 키가 올바르지 않아요. sk-ant-로 시작하는 키를 다시 복사해 주세요.' };
@@ -151,4 +122,4 @@ async function testKey(name, apiKey) {
   }
 }
 
-module.exports = { organize, transcribe, describeError, testKey, summarizeAll };
+module.exports = { organize, describeError, testKey, summarizeAll };

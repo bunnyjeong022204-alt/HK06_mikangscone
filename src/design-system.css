@@ -62,7 +62,7 @@
 .side-left .sheet.basic-note {
   top: min(84px, 10vh);
   width: min(410px, calc(100% - 32px));
-  transform: translateX(var(--tx));
+  transform: none;
 }
 
 .side-right .sheet.basic-note { right: min(150px, max(16px, calc(100vw - 426px))); }
@@ -236,7 +236,6 @@
 }
 .overview-layout-editor li:last-child { border-bottom: 0; }
 .overview-layout-editor button:disabled { opacity: .4; cursor: default; }
-.overview-slot > .overview-record { width: 100%; }
 
 .overview-assistant { background: var(--mikkang-sage-light); }
 .overview-pet { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; }
@@ -478,13 +477,6 @@
   background: var(--mikkang-sage-light);
 }
 
-.overview-record { display: flex; align-items: center; gap: 7px; font-size: 12px; }
-.overview-record > span:first-child {
-  min-width: 28px;
-  color: var(--mikkang-action);
-  font-size: 20px;
-}
-.overview-record small { display: block; margin-top: 3px; color: var(--mikkang-muted); }
 .overview-ai .btn:disabled { opacity: .55; cursor: default; }
 .overview-summary { margin-top: 11px; padding-top: 9px; border-top: 1px solid var(--mikkang-line); font-size: 12px; line-height: 1.5; }
 .overview-summary summary { cursor: pointer; }

@@ -34,6 +34,7 @@ export interface SpeciesAnimationDef {
 
 export interface SpeciesBehaviorDef {
   personality?: PetPersonality;
+  doubleClick?: 'fire' | 'chase' | 'ink' | 'hearts';
   walkSpeedPxPerSec: number;
   idleMinMs: number;
   idleMaxMs: number;

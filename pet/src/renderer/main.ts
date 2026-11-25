@@ -3,12 +3,12 @@ import type { PetState } from '../shared/petState';
 import { PetStateMachine } from './PetStateMachine';
 import { AnimationController } from './AnimationController';
 import { PetRenderer } from './PetRenderer';
+import { PetEffects } from './PetEffects';
 import { PetQuickMenu } from './PetQuickMenu';
 import { EmptyRosterPaper } from './EmptyRosterPaper';
 import { FishingRig, type FishingPose } from './FishingRig';
 import { BehaviorController } from './BehaviorController';
 import type { Rect, Vec2 } from './types';
-import { edgeDimensions, edgePosition, nearestEdge } from './edgePath';
 import { advanceFlight, landingReaction, launchVelocity, releaseVelocity, RELEASE_SAMPLE_WINDOW_MS, type Flight, type PointerSample } from './throwMotion';
 import { motionCue, personalityOf, poseFor, type MotionCue } from './petMotion';
 import { canHitPet, petContact, petRebound, wallSide, type CollisionPath } from './petCollision';
@@ -37,12 +37,13 @@ interface Companion {
   nextJumpAt: number;
   depthWalkElapsed?: number;
   nextDepthWalkAt: number;
-  wallDrawOffset: number;
+  chasing?: boolean;
+  nextBurstAt?: number;
   toyPlay?: { origin: Vec2; position: Vec2; strike: Vec2; aim: Vec2; side: -1 | 1; hit: boolean };
 }
 
-const DEPTH_WALK_LEG_MS = 800;
-const DEPTH_WALK_DISTANCE = 45;
+const DEPTH_WALK_LEG_MS = 1050;
+const DEPTH_WALK_DISTANCE = 96;
 
 const REACTION_LINES = {
   grab: ['으앗, 잡지 마아!', '잠깐만, 나 내려갈래!', '히익! 발이 땅에서 떨어졌어!'],
@@ -72,15 +73,19 @@ function cueAnimation(species: SpeciesConfig, { key: motion, strength }: MotionC
 async function main(): Promise<void> {
   const canvas = document.getElementById('pet-canvas') as HTMLCanvasElement;
   const renderer = new PetRenderer(canvas);
+  const effects = new PetEffects(canvas.getContext('2d')!);
   const bounds = await window.petAPI.getWorkArea();
   const petSize = (pet: Companion) => pet.species.animations.idle?.displaySize ?? (pet.species.animations.idle?.frameWidth ?? 475) * pet.species.behavior.spriteScale;
+  const floorX = (x: number, size: number) => Math.max(0, Math.min(Math.max(0, bounds.width - size), x));
   const petPosition = (pet: Companion) => {
     const activePosition = pet.toyPlay?.position ?? pet.airborne?.position;
     if (activePosition) return activePosition;
-    const position = edgePosition(pet.behavior.getPosition().x, bounds.width, bounds.height, petSize(pet));
+    const size = petSize(pet);
+    const position = { x: floorX(pet.behavior.getPosition().x, size), y: Math.max(0, bounds.height - size) };
     if (pet.depthWalkElapsed !== undefined) {
       const progress = pet.depthWalkElapsed / DEPTH_WALK_LEG_MS;
-      position.y -= Math.min(progress, 2 - progress) * DEPTH_WALK_DISTANCE;
+      const eased = (1 - Math.cos(Math.PI * Math.min(progress, 2 - progress))) / 2;
+      position.y -= eased * Math.min(position.y, DEPTH_WALK_DISTANCE);
     }
     return position;
   };
@@ -116,6 +121,7 @@ async function main(): Promise<void> {
   const petMenu = new PetQuickMenu(toggleToy);
   const emptyPaper = new EmptyRosterPaper((anchor) => petMenu.open(anchor, false, false, true));
   let nextPointerPoll = 0;
+  const pollPointer = () => clickThrough || pets.some((pet) => pet.chasing);
   document.addEventListener('pointermove', (event) => {
     if (sceneReady && pets.length === 0 && event.isPrimary) {
       pointer = { x: event.clientX, y: event.clientY };
@@ -210,11 +216,7 @@ async function main(): Promise<void> {
       const animation = new AnimationController();
       const size = species.animations.idle?.displaySize ?? (species.animations.idle?.frameWidth ?? 475) * species.behavior.spriteScale;
       const behavior = new BehaviorController(state, species.behavior,
-        { x: Math.max(0, bounds.height - size) + Math.max(0, Math.min(bounds.width - size, bounds.width * 0.25 + index * 160)), y: 0 },
-        (position) => {
-          const route = edgeDimensions(bounds.width, bounds.height, size);
-          return position.x >= route.wall && position.x <= route.wall + route.floor ? ['idle', 'sit', 'sleep'] : ['idle'];
-        });
+        { x: floorX(bounds.width * 0.25 + index * 160, size), y: 0 }, () => ['idle', 'sit', 'sleep']);
       const bubble = document.createElement('div');
       bubble.className = 'speech'; bubble.hidden = true; document.body.append(bubble);
       const initialAnimation = animationFor(species, state.getState());
@@ -224,7 +226,7 @@ async function main(): Promise<void> {
         clip: initialAnimation, playbackKey: state.getState(), reactionUntil: 0,
         throwSpeed: 0, impactSpeed: 0, impactSide: 1 as const, nextCueAt: now + 2400,
         nextLookAt: 0, pointerDistance: Infinity, nextJumpAt: now + 10500,
-        nextDepthWalkAt: now + 4200, wallDrawOffset: 0 };
+        nextDepthWalkAt: now + 4200 };
     });
     nextChat = performance.now() + 6000; nextMeeting = performance.now() + 20000; nextEncounter = performance.now() + 4000;
   });
@@ -249,8 +251,7 @@ async function main(): Promise<void> {
     if (!def) return false;
     const frame = pet.animation.getCurrentFrameRect(pet.facing);
     const pose = pet.cue && poseFor(pet.cue, previous, pet.species);
-    const position = petPosition(pet);
-    const pos = { x: position.x + pet.wallDrawOffset, y: position.y };
+    const pos = petPosition(pet);
     const scale = pet.species.behavior.spriteScale;
     const box = pose && frame ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize(pet)) : renderer.getSpriteBounds(def, pos, scale);
     return pointer.x >= box.x && pointer.x <= box.x + box.width && pointer.y >= box.y && pointer.y <= box.y + box.height;
@@ -339,7 +340,7 @@ async function main(): Promise<void> {
       if (pet.throwSpeed > 0) cue(pet, 'fly', performance.now(), pet.impactSide, pet.throwSpeed / 1300);
     }
     else if (event.type === 'pointerup') {
-      if (resting(pet)) return;
+      if (resting(pet) || pet.chasing || (pet.nextBurstAt ?? 0) > performance.now()) return;
       pet.depthWalkElapsed = undefined;
       pet.cue = undefined;
       pet.state.transition('idle'); pet.behavior.react();
@@ -349,6 +350,42 @@ async function main(): Promise<void> {
   window.addEventListener('pointerup', release);
   window.addEventListener('pointercancel', release);
   canvas.addEventListener('lostpointercapture', release);
+  canvas.addEventListener('dblclick', (event) => {
+    if (event.button !== 0 || held || petMenu.isOpen) return;
+    pointer = { x: event.clientX, y: event.clientY };
+    const pet = hit();
+    const action = pet?.species.behavior.doubleClick;
+    if (!pet || !action || pet.airborne) return;
+    event.preventDefault();
+    if (action === 'chase') {
+      if (pet.chasing) {
+        window.petAPI.runPetMenuAction({ kind: 'dismiss', id: pet.species.id });
+      } else {
+        if (toyEnabled && toyOwner() === pet) toggleToy();
+        pet.toyPlay = undefined;
+        pet.depthWalkElapsed = undefined;
+        pet.cue = undefined;
+        hush(pet);
+        pet.chasing = true;
+      }
+      return;
+    }
+    const now = performance.now();
+    if ((pet.nextBurstAt ?? 0) > now) return;
+    const pos = petPosition(pet);
+    const size = petSize(pet);
+    const side = pos.x < size * .6 ? 1 : pos.x + size * 1.65 > bounds.width || pet.facing >= 5 ? -1 : 1;
+    pet.nextBurstAt = now + 1000;
+    pet.depthWalkElapsed = undefined;
+    pet.cue = undefined;
+    pet.state.transition('idle');
+    pet.behavior.react();
+    if (action === 'fire') pet.facing = side < 0 ? 6 : 2;
+    effects.burst(action, {
+      x: pos.x + size * (action === 'fire' ? side < 0 ? .26 : .74 : .5),
+      y: pos.y + size * (action === 'fire' ? .42 : action === 'ink' ? .5 : .27),
+    }, side, now);
+  });
   canvas.addEventListener('contextmenu', (event) => {
     event.preventDefault();
     if (!event.shiftKey) return;
@@ -437,7 +474,7 @@ async function main(): Promise<void> {
       }
     }
     if (next.landed) {
-      pet.behavior.setPosition({ x: nearestEdge(next.position, bounds.width, bounds.height, size), y: 0 });
+      pet.behavior.setPosition({ x: floorX(next.position.x, size), y: 0 });
       pet.airborne = undefined;
       pet.collisionPath = undefined;
       const severity = Math.max(pet.impactSpeed, next.landingSpeed);
@@ -506,7 +543,7 @@ async function main(): Promise<void> {
           }
         }
         if (p === 1) {
-          pet.behavior.setPosition({ x: floor + play.position.x, y: 0 });
+          pet.behavior.setPosition({ x: play.position.x, y: 0 });
           cue(pet, 'toyLand', now, play.side);
         }
       } else if (active.key === 'toyLand' && now >= active.end) cue(pet, 'toyAfter', now, play.side);
@@ -533,7 +570,7 @@ async function main(): Promise<void> {
         pet.state.transition('idle');
         pet.state.transition('walk');
       }
-      pet.behavior.setPosition({ x: floor + nextX, y: 0 });
+      pet.behavior.setPosition({ x: nextX, y: 0 });
       return true;
     }
     hush(pet);
@@ -578,12 +615,11 @@ async function main(): Promise<void> {
     renderer.render(toyProp, frame, { x: toyPointer.x - size * 0.91, y: toyPointer.y - size * 0.92 }, cat.species.behavior.spriteScale);
   }
 
-  function cueForMovement(pet: Companion, now: number, before: Vec2, after: Vec2, previousState: PetState) {
+  function cueForMovement(pet: Companion, now: number, after: Vec2, previousState: PetState) {
     const state = pet.state.getState();
     const personality = personalityOf(pet.species);
     const size = petSize(pet);
-    const route = edgeDimensions(bounds.width, bounds.height, size);
-    const onFloor = after.y >= route.wall - 0.5;
+    const onFloor = after.y >= bounds.height - size - 0.5;
     const side = after.x < bounds.width / 2 ? -1 : 1;
     if (state === 'sleep') {
       hush(pet);
@@ -606,21 +642,9 @@ async function main(): Promise<void> {
       return;
     }
     if (state === 'walk' && onFloor && !toyEnabled && now >= pet.nextDepthWalkAt &&
-        pet.species.motions?.frontWalk && pet.species.motions.backWalk && route.wall >= DEPTH_WALK_DISTANCE &&
-        after.x > size * 0.7 && after.x < route.floor - size * 0.7) {
+        pet.species.motions?.frontWalk && pet.species.motions.backWalk && after.y >= 32) {
       pet.depthWalkElapsed = 0;
       pet.nextDepthWalkAt = now + 10500 + Math.random() * 5500;
-      return;
-    }
-    if (!pet.species.motions?.wallFront && state === 'walk' && after.y < before.y && route.wall > 120 && now >= pet.nextCueAt) {
-      if (before.y > route.wall * 0.45 && after.y <= route.wall * 0.45) {
-        cue(pet, 'slip', now, side);
-        pet.nextCueAt = now + 7500;
-      } else if (before.y > route.wall * 0.16 && after.y <= route.wall * 0.16) {
-        cue(pet, 'peek', now, side);
-        pet.behavior.turnAround();
-        pet.nextCueAt = now + 5500;
-      }
       return;
     }
     const distance = Math.hypot(pointer.x - after.x - size / 2, pointer.y - after.y - size / 2);
@@ -670,6 +694,26 @@ async function main(): Promise<void> {
     canvas.style.cursor = held?.dragging ? 'grabbing' : hovered ? 'grab' : 'default';
   }
 
+  function followCursor(pet: Companion, delta: number) {
+    if (pointer.x < 0 || pointer.y < 0 || pointer.x > bounds.width || pointer.y > bounds.height) {
+      pet.state.transition('idle');
+      return;
+    }
+    const size = petSize(pet);
+    const target = floorX(pointer.x - size / 2, size);
+    const distance = pet.behavior.getPosition().x;
+    const gap = target - distance;
+    if (Math.abs(gap) < 5) {
+      pet.state.transition('idle');
+      return;
+    }
+    if (pet.state.getState() !== 'walk') {
+      pet.state.transition('idle');
+      pet.state.transition('walk');
+    }
+    pet.behavior.setPosition({ x: distance + Math.sign(gap) * Math.min(Math.abs(gap), delta * .205), y: 0 });
+  }
+
   function tick(now: number) {
     bounds.width = window.innerWidth; bounds.height = window.innerHeight;
     const delta = Math.min(now - previous, 100); previous = now;
@@ -678,10 +722,10 @@ async function main(): Promise<void> {
     emptyPaper.update(empty, petMenu.isOpen, bounds.width, bounds.height, delta);
     // Click-through windows can miss forwarded movement, including when a pet
     // walks under a stationary cursor. Use the system cursor until hit testing resumes.
-    if (sceneReady && clickThrough && !document.hidden && now >= nextPointerPoll && now - lastPointerAt > 90) {
+    if (sceneReady && pollPointer() && !document.hidden && now >= nextPointerPoll && now - lastPointerAt > 90) {
       nextPointerPoll = now + 60;
       void window.petAPI.getCursorPoint().then((point) => {
-        if (!clickThrough || performance.now() - lastPointerAt <= 90) return;
+        if (!pollPointer() || performance.now() - lastPointerAt <= 90) return;
         pointer = point;
         updateMouseTarget();
       }).catch(() => {});
@@ -716,42 +760,31 @@ async function main(): Promise<void> {
       const before = petPosition(pet);
       const previousState = pet.state.getState();
       if (pet.airborne) simulateFlight(pet, now, delta);
+      else if (pet.chasing && held?.pet !== pet) followCursor(pet, delta);
       else if (pet.depthWalkElapsed !== undefined) {
         if (held?.pet !== pet) pet.depthWalkElapsed += delta;
         if (pet.depthWalkElapsed >= DEPTH_WALK_LEG_MS * 2) pet.depthWalkElapsed = undefined;
       } else if (playWithToy(pet, now, delta)) { /* Toy pose drives position while active. */ }
       else if (held?.pet !== pet && !pet.cue && now >= pet.speakingUntil) {
         const size = petSize(pet);
-        const route = edgeDimensions(bounds.width, bounds.height, size);
-        pet.behavior.update(delta, { x: 0, y: 0, width: route.length + size, height: bounds.height }, size);
-        cueForMovement(pet, now, before, petPosition(pet), previousState);
-      } else if (pet.cue?.key === 'slip') {
-        const size = petSize(pet);
-        const route = edgeDimensions(bounds.width, bounds.height, size);
-        const down = Math.min(route.wall, before.y + delta * 0.025);
-        pet.behavior.setPosition({ x: pet.cue.side < 0 ? down : route.length - down, y: 0 });
+        pet.behavior.update(delta, { x: 0, y: 0, width: Math.max(bounds.width, size), height: bounds.height }, size);
+        cueForMovement(pet, now, petPosition(pet), previousState);
       }
       const after = petPosition(pet);
       const dx = after.x - before.x;
       const dy = after.y - before.y;
       if (pet.toyPlay) pet.facing = pet.toyPlay.side < 0 ? 6 : 2;
       else if (pet.cue?.key === 'wallImpact' || pet.cue?.key === 'wallFall') pet.facing = pet.cue.side < 0 ? 6 : 2;
-      else if (pet.cue?.key === 'slip') pet.facing = 4;
       else if (Math.abs(dx) > Math.max(0.01, Math.abs(dy))) pet.facing = dx < 0 ? 6 : 2;
       else if (Math.abs(dy) > 0.01) pet.facing = dy < 0 ? 4 : 0;
       const state = pet.state.getState();
       const depthMotion = pet.depthWalkElapsed === undefined ? undefined :
         pet.depthWalkElapsed < DEPTH_WALK_LEG_MS ? 'backWalk' : 'frontWalk';
-      const canHoldWall = state === 'walk' || state === 'idle' || state === 'sit';
-      const wall = canHoldWall && !depthMotion && !pet.airborne && !pet.toyPlay && held?.pet !== pet && wallSide(after, petSize(pet), bounds.width, bounds.height);
-      const wallMotion = pet.species.motions?.wallFront
-        ? (pet.facing === 0 ? 'wallFront' : 'wallIdle')
-        : (state === 'walk' ? 'climb' : 'wallIdle');
-      const wallPose = wall && (!pet.cue || pet.cue.key === 'slip' || pet.cue.key === 'peek') && pet.species.motions?.[wallMotion];
       const sideIdle = (state === 'idle' || state === 'sit') && (pet.facing === 2 || pet.facing === 6) && pet.species.motions?.sideIdle;
       const depthClip = depthMotion && pet.species.motions?.[depthMotion];
-      const playback = wallPose ? wallMotion : depthMotion ?? pet.cue?.key ?? (sideIdle ? 'sideIdle' : state);
-      const def = wallPose || depthClip || (pet.cue ? cueAnimation(pet.species, pet.cue, pet.facing) : sideIdle || animationFor(pet.species, state));
+      if (depthMotion) pet.facing = depthMotion === 'backWalk' ? 4 : 0;
+      const playback = depthMotion ?? pet.cue?.key ?? (sideIdle ? 'sideIdle' : state);
+      const def = depthClip || (pet.cue ? cueAnimation(pet.species, pet.cue, pet.facing) : sideIdle || animationFor(pet.species, state));
       if (!def) continue;
       if (pet.playbackKey !== playback) {
         pet.clip = def;
@@ -762,15 +795,9 @@ async function main(): Promise<void> {
       const frame = pet.animation.getCurrentFrameRect(pet.facing);
       const pose = pet.cue && poseFor(pet.cue, now, pet.species);
       const leftSheet = pet.facing >= 5 ? def.leftSheet : undefined;
-      const mirror = !leftSheet && (def.mirrorWhen === 'left' ? pet.facing >= 5 : def.mirrorWhen === 'right' && (wallPose ? wall === 1 : pet.cue?.side === 1));
+      const mirror = !leftSheet && (def.mirrorWhen === 'left' ? pet.facing >= 5 : def.mirrorWhen === 'right' && pet.cue?.side === 1);
       const view = leftSheet ? { ...def, sheet: leftSheet } : def;
-      pet.wallDrawOffset = 0;
-      if (wall && wallPose && def.wallInsets) {
-        const inset = (wall === -1) !== mirror ? def.wallInsets.left : def.wallInsets.right;
-        const edgeX = wall === -1 ? 0 : Math.max(0, bounds.width - petSize(pet));
-        pet.wallDrawOffset = edgeX - after.x + wall * inset * scale;
-      }
-      const pos = { x: after.x + pet.wallDrawOffset, y: after.y };
+      const pos = after;
       if (frame) renderer.render(view, frame, pos, scale,
         held?.pet === pet && held.dragging ? held.offset : undefined, pose, petSize(pet), mirror);
       pet.bubble.hidden = resting(pet) || now >= pet.until;
@@ -781,6 +808,7 @@ async function main(): Promise<void> {
       pet.bubble.style.top = `${Math.max(4, head - pet.bubble.offsetHeight - 4)}px`;
     }
     renderToy(delta);
+    effects.draw(now);
     if (chatter?.enabled && now >= nextMeeting && !reply && !held) {
       for (let i = 0; i < pets.length; i++) {
         const a = pets[i]; const b = pets.slice(i + 1).find((other) =>

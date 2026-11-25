@@ -4,7 +4,7 @@
 const path = require('path');
 const {
   app, BrowserWindow, screen, ipcMain, Tray, Menu, Notification, globalShortcut,
-  nativeImage, session, shell, systemPreferences,
+  nativeImage, session, shell,
 } = require('electron');
 const store = require('./store');
 const ai = require('./ai');
@@ -109,7 +109,6 @@ function buildTrayMenu() {
   const menu = Menu.buildFromTemplate([
     { label: '책갈피 펼치기', accelerator: 'CommandOrControl+Shift+M', click: () => send('cmd', 'summon') },
     { label: '새 메모', click: () => send('cmd', 'new') },
-    { label: '녹음 메모', accelerator: 'CommandOrControl+Shift+R', click: () => send('cmd', 'record') },
     { label: '일정 보기', click: () => send('cmd', 'agenda') },
     { label: '전체보기', click: () => send('cmd', 'board') },
     { label: 'AI 비서', click: () => send('cmd', 'assistant') },
@@ -134,7 +133,6 @@ function createTray() {
 
 function registerShortcuts() {
   globalShortcut.register('CommandOrControl+Shift+M', () => send('cmd', 'summon'));
-  globalShortcut.register('CommandOrControl+Shift+R', () => send('cmd', 'record'));
 }
 
 /* ───────── IPC ───────── */
@@ -185,7 +183,7 @@ ipcMain.on('notify', (_e, { title, body, noteId }) => {
 });
 
 ipcMain.handle('keys:status', () => store.keyStatus());
-ipcMain.handle('keys:set', (_e, name, value) => { if (['anthropic', 'openai'].includes(name)) store.setKey(name, value); return store.keyStatus(); });
+ipcMain.handle('keys:set', (_e, name, value) => { if (name === 'anthropic') store.setKey(name, value); return store.keyStatus(); });
 
 // 아이폰 HEIC 사진 → JPEG (화면 쪽 보안 규칙을 느슨하게 하지 않도록 메인 프로세스에서 변환)
 ipcMain.handle('image:heic', async (_e, buf) => {
@@ -203,32 +201,12 @@ ipcMain.handle('weather:get', async (_e, city) => {
   try { return await getWeather(city); }
   catch { return { ok: false, error: '날씨를 가져오지 못했어요. 인터넷 연결을 확인해 주세요.' }; }
 });
-ipcMain.handle('keys:test', (_e, name) => ai.testKey(name, store.getKey(name)));
+ipcMain.handle('keys:test', () => ai.testKey(store.getKey('anthropic')));
 ipcMain.handle('ai:organize', async (_e, payload) => {
   const key = store.getKey('anthropic');
   if (!key) return { ok: false, reason: 'nokey' };
   try { return { ok: true, result: await ai.organize(key, payload) }; }
   catch (e) { return { ok: false, reason: 'error', error: ai.describeError(e) }; }
-});
-
-ipcMain.handle('audio:save', (_e, id, buf, ext) => { store.saveAudio(id, buf, ext); return true; });
-ipcMain.handle('audio:read', (_e, id) => { const p = store.findAudio(id); return p ? require('fs').readFileSync(p) : null; });
-ipcMain.handle('audio:delete', (_e, id) => { store.deleteAudio(id); return true; });
-ipcMain.handle('audio:transcribe', async (_e, id) => {
-  const key = store.getKey('openai');
-  if (!key) return { ok: false, reason: 'nokey' };
-  const p = store.findAudio(id);
-  if (!p) return { ok: false, reason: 'error', error: '녹음 파일을 찾지 못했어요.' };
-  try { return { ok: true, text: await ai.transcribe(key, p) }; }
-  catch (e) { return { ok: false, reason: 'error', error: ai.describeError(e) }; }
-});
-ipcMain.handle('mic:ask', async () => {
-  if (IS_MAC) {
-    const st = systemPreferences.getMediaAccessStatus('microphone');
-    if (st === 'granted') return true;
-    return systemPreferences.askForMediaAccess('microphone');
-  }
-  return true;
 });
 
 /* ───────── 시작 ───────── */
@@ -239,8 +217,8 @@ app.on('second-instance', (_event, args) => {
 });
 app.whenReady().then(() => {
   if (IS_MAC && app.dock) app.dock.hide(); // 독 아이콘 없이 상주 (메뉴 막대 아이콘으로 조작)
-  session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(['media', 'notifications', 'clipboard-sanitized-write'].includes(perm)));
-  session.defaultSession.setPermissionCheckHandler((_wc, perm) => ['media', 'notifications'].includes(perm));
+  session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(['notifications', 'clipboard-sanitized-write'].includes(perm)));
+  session.defaultSession.setPermissionCheckHandler((_wc, perm) => ['notifications'].includes(perm));
   petControls = pet.startPet(() => {
     if (tray) buildTrayMenu();
     send('pet-changed');

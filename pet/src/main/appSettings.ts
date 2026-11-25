@@ -7,7 +7,7 @@ interface PersistedSettings {
   dismissedSpeciesIds?: string[];
 }
 
-const DEFAULT_SPECIES_ID = 'mikkang';
+export const DEFAULT_SPECIES_ID = 'mono-cat';
 
 /**
  * Small, generalized settings store — starts with just the selected

@@ -3,7 +3,7 @@
 // 데스크톱 앱의 window.api(운영체제 기능)를 브라우저용으로 바꿔 끼운다:
 //   - 맨 앞 앱 감지 → 예시 화면에서 브라우저 창을 누르면 "웹 사용 중", 바탕화면을 누르면 "바탕화면"
 //   - 화면 끝 감지 → 예시 화면의 왼쪽·오른쪽 끝 띠에 마우스를 대면
-//   - AI 정리 → claude.ai의 Claude 연결(sample), 음성 메모 → claude.ai 받아쓰기(dictation)
+//   - AI 정리 → claude.ai의 Claude 연결(sample)
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
@@ -27,8 +27,7 @@ const themeCss = themeIds.filter((id) => fs.existsSync(path.join(THEME_DIR, id, 
     const asset = fs.readFileSync(path.join(THEME_DIR, id, relativeFile)).toString('base64');
     return `url('data:${themeAssetTypes[extension]};base64,${asset}')`;
   })).join('\n');
-const avatar = fs.readFileSync(path.join(ROOT, 'src', 'mikkang.png')).toString('base64');
-const designSystem = R('design-system.css').replace("url('mikkang.png')", `url('data:image/png;base64,${avatar}')`);
+const designSystem = R('design-system.css');
 for (const f of scripts) if (/<\/script/i.test(R(f))) throw new Error('</script> inside ' + f);
 
 const ICON = {
@@ -83,7 +82,7 @@ const DESKTOP = `
     <aside class="guide" id="guide" aria-label="체험 안내">
       <div class="gh2"><b>귤메모 체험하기</b><button type="button" id="gClose" aria-label="안내 접기">접기</button></div>
       <ol>
-        <li><b>AI 비서</b>: 모아보기의 말풍선 버튼에서 부탁·날씨·녹음을 사용할 수 있어요.</li>
+        <li><b>AI 비서</b>: 모아보기의 말풍선 버튼에서 부탁과 날씨을 사용할 수 있어요.</li>
         <li><b>섹션</b>: 책갈피는 업무·생활·아이디어 같은 큰 섹션이에요. 섹션을 누르면 그 안의 메모들이 펼쳐지고, 메모를 누르면 메모지가 열려요.</li>
         <li><b>전체보기</b>: 책갈피 맨 위 <b>전체보기</b>를 누르면 일정과 메모를 한 위젯에서 볼 수 있어요. 메모를 누르면 그 메모로 가요.</li>
         <li><b>바탕화면·화면 끝</b>: 브라우저 창의 <b>─</b>로 바탕화면을 보면 책갈피가 펼쳐져요. 화면 왼쪽 끝(점선 띠)에 마우스를 대면 최근 메모가 나와요.</li>
@@ -111,15 +110,13 @@ const SHIM = `
   var L = {cursor:[],fg:[],display:[],cmd:[],open:[],blur:[]};
   var on = function(k){ return function(fn){ L[k].push(fn); return function(){}; }; };
   var emit = function(k,v){ L[k].forEach(function(f){ try { f(v); } catch(e) { console.error(e); } }); };
-  var KEY = 'mikang-preview-v2', audio = new Map();
+  var KEY = 'mikang-preview-v2';
   var hasClaude = !!(window.claude && typeof window.claude.use === 'function');
   var pSample = hasClaude ? window.claude.use('sample').catch(function(){ return null; }) : Promise.resolve(null);
-  var pDict = hasClaude ? window.claude.use('dictation').catch(function(){ return null; }) : Promise.resolve(null);
-  var dict = null; pDict.then(function(d){ dict = d; });
   var WD = ['일','월','화','수','목','금','토'];
   function nowText(){ var d = new Date(), p = function(n){ return String(n).padStart(2,'0'); };
     return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())+' ('+WD[d.getDay()]+'요일)'; }
-  var KIND = { memo:'사용자가 직접 쓴 메모', transcript:'말로 한 메모를 받아쓴 글', command:'사용자가 비서에게 한 부탁 (메모로 만들어 줘)' };
+  var KIND = { memo:'사용자가 직접 쓴 메모', command:'사용자가 비서에게 한 부탁 (메모로 만들어 줘)' };
   function prompt(p, withImages){
     return '너는 사용자의 바탕화면에 사는 메모 비서 캐릭터야. 아래 메모를 메모지 한 장으로 정리해서 JSON 하나만 출력해. 설명이나 코드블록은 쓰지 마.\\n'
       + '형식: {"keyword":"책갈피 키워드 1개, 한국어 명사 2~6자","title":"제목 20자 이내 또는 빈 문자열","body":"메모지에 적을 정리된 본문. 줄마다 \\'- \\'로 시작","summary":["요점 최대 3개, 각 30자 이내"],"events":[{"title":"할 일 20자 이내","when":"YYYY-MM-DDTHH:mm (현지 시각)","deadline":true/false,"repeat":"none|daily|weekly","all_day":true/false}],"reply":"캐릭터가 말풍선으로 할 1~2문장. 친근한 존댓말, 이모지 없이. 맞춘 알람의 날짜와 시간을 구체적으로","section":"분류 후보 중 가장 맞는 이름 하나 그대로, 없으면 빈 문자열"}\\n'
@@ -135,9 +132,8 @@ const SHIM = `
     setInteractive: function(){}, focus: function(){}, release: function(){}, openData: function(){}, quit: function(){}, applySettings: function(){},
     notify: function(){},
     info: async function(){ return {platform:'web', demo:true, proPreview:true, args:[]}; },
-    keyStatus: async function(){ var r = await Promise.all([pSample, pDict]); return {anthropic: !!r[0], openai: !!r[1], builtin: true}; },
+    keyStatus: async function(){ return {anthropic: !!(await pSample), builtin: true}; },
     setKey: async function(){ return this.keyStatus(); },
-    dictation: function(){ return dict; },
     organize: async function(p){
       var s = await pSample; if (!s) return {ok:false, reason:'nokey'};
       var opts = { modelTier:'quick', cache:false };
@@ -154,11 +150,6 @@ const SHIM = `
     },
     weather: async function(){ return {ok:false, error:'웹 미리보기에서는 보안 규칙 때문에 날씨 서버에 연결할 수 없어요. 컴퓨터에 설치한 데스크톱 앱에서는 바로 알려드려요.'}; },
     libSrc: function(l){ return l.cdn; },
-    saveAudio: async function(id,buf){ audio.set(id,buf); return true; },
-    readAudio: async function(id){ return audio.get(id) || null; },
-    deleteAudio: async function(id){ audio.delete(id); return true; },
-    transcribe: async function(){ return {ok:false, reason:'nokey'}; },
-    askMic: async function(){ return true; },
     onCursor:on('cursor'), onForeground:on('fg'), onDisplay:on('display'), onCommand:on('cmd'), onOpenNote:on('open'), onBlur:on('blur')
   };
 
