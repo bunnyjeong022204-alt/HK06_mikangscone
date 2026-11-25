@@ -3,7 +3,9 @@
 
   const FORMATS = [
     ['bold', '굵게', 'B'], ['italic', '기울임', 'I'], ['underline', '밑줄', 'U'],
-    ['strikeThrough', '취소선', 'ab'], ['insertUnorderedList', '목록', '≡'],
+    ['strikeThrough', '취소선', 'ab'],
+    ['insertUnorderedList', '목록',
+      '<svg width="17" height="17" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5h10M7 10h10M7 15h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="3" cy="5" r="1.2" fill="currentColor"/><circle cx="3" cy="10" r="1.2" fill="currentColor"/><circle cx="3" cy="15" r="1.2" fill="currentColor"/></svg>'],
   ];
   const TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'UL', 'LI', 'BR', 'DIV', 'P']);
 
@@ -50,18 +52,19 @@
     }
     el.classList.toggle('is-empty', !note.text.trim());
     const toolbar = h('div', { class: 'basic-format', role: 'group', 'aria-label': '메모 서식' },
-      FORMATS.map(([command, label, text]) => h('button', {
+      FORMATS.map(([command, label, icon]) => h('button', {
         type: 'button',
         class: 'basic-format-' + command,
         'aria-label': label,
         title: label,
+        html: icon,
         onmousedown: (e) => e.preventDefault(),
         onclick: () => {
           el.focus();
           document.execCommand(command);
           sync();
         },
-      }, text)));
+      })));
     return { el, toolbar };
   }
 
