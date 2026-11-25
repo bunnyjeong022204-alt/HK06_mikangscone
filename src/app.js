@@ -48,12 +48,12 @@ const W = () => (stageBox() && stageBox().clientWidth) || innerWidth, H = () => 
 
 /* ─────────── 스타일 테마 ─────────── */
 const THEMES = [
-  { id: 'cherry', name: '체리 스캘럽', shape: 'scallop', stroke: '#d93a35', sw: 2.6, fill: '#fcf8ee', clip: { c: '#a9d3ee', e: '#7fb5da' }, clipX: 44, back: { t: 'g', a: '#b7cdee', b: '#eaf1fb' }, br: -2, tab: { bg: '#a9d3ee', ink: '#21425a' }, hl: 'rgba(217,58,53,.2)', hl2: 'rgba(169,211,238,.38)', rule: 'rgba(110,140,190,.3)', pad: '50px 40px 34px', orn: [{ t: 'starsilver', x: 2, y: 83, s: 58, r: -12 }] },
-  { id: 'notebook', name: '레드 노트', shape: 'notebook', stroke: '#e4dccb', sw: 1.2, fill: '#fbf6ea', clip: { c: '#d6342e', e: '#a82320' }, clipX: 220, back: { t: 's', a: '#8f1f2c' }, br: 1.8, tab: { bg: '#d6342e', ink: '#ffffff' }, hl: 'rgba(214,52,46,.2)', hl2: 'rgba(214,52,46,.12)', rule: 'rgba(180,120,110,.3)', pad: '56px 34px 34px 58px', orn: [{ t: 'bowred', x: 73, y: 5, s: 96, r: 14 }] },
-  { id: 'olive', name: '올리브 타원', shape: 'oval', stroke: '#8d9b86', ring: '#a9b5a2', sw: 2, fill: '#fbf6ea', clip: { c: '#f2ebd9', e: '#d3c9ae' }, clipX: 80, back: { t: 'g', a: '#aebcab', b: '#e6ece2' }, br: -2.5, tab: { bg: '#f2ebd9', ink: '#4b5645' }, hl: 'rgba(141,155,134,.34)', hl2: 'rgba(141,155,134,.22)', rule: 'rgba(120,135,112,.28)', pad: '86px 62px 76px', orn: [{ t: 'heartcream', x: 4, y: 84, s: 60, r: -8 }, { t: 'starsage', x: 85, y: 50, s: 50, r: 10 }] },
-  { id: 'blue', name: '블루 스캘럽', shape: 'scallop', stroke: '#7d9cc8', sw: 1.8, fill: '#fcf8ee', clip: { c: '#cfd4da', e: '#98a1ac', metal: true }, clipX: 230, back: { t: 's', a: '#86a4c8' }, br: 2, tab: { bg: '#cfd4da', ink: '#2d3b4d' }, hl: 'rgba(125,156,200,.34)', hl2: 'rgba(125,156,200,.22)', rule: 'rgba(110,140,190,.3)', pad: '54px 44px 42px', orn: [{ t: 'heartsilver', x: 1, y: 84, s: 56, r: -8 }, { t: 'sealblue', x: 80, y: 84, s: 72, r: 0 }] },
-  { id: 'butter', name: '버터 스티치', shape: 'stitch', stroke: '#e2cf9a', sw: 1.6, dash: '#c9a54a', fill: '#fcf8ee', clip: { c: '#f2dc8f', e: '#d6b955' }, clipX: 140, back: { t: 'g', a: '#f0d374', b: '#fbefc4' }, br: -2, tab: { bg: '#f2dc8f', ink: '#5a4712' }, hl: 'rgba(240,211,116,.55)', hl2: 'rgba(240,211,116,.32)', rule: 'rgba(200,165,80,.3)', pad: '54px 44px 40px', orn: [{ t: 'buttonstar', x: 0, y: 1, s: 60, r: -10 }] },
-  { id: 'pink', name: '핑크 타원', shape: 'oval', stroke: '#eaa6b6', ring: '#f3c3cf', sw: 2, fill: '#fcf8f1', clip: { c: '#f2a9b9', e: '#d98698' }, clipX: 230, back: { t: 's', a: '#f3b9c5' }, br: 2.5, tab: { bg: '#f2a9b9', ink: '#5a2331' }, hl: 'rgba(242,169,185,.5)', hl2: 'rgba(242,169,185,.3)', rule: 'rgba(225,150,168,.3)', pad: '86px 62px 76px', orn: [{ t: 'starsilver', x: 2, y: 80, s: 60, r: -10 }, { t: 'bowpink', x: 78, y: 86, s: 70, r: 8 }] },
+  { id: 'cherry', name: '체리 스캘럽', shape: 'scallop', stroke: '#d93a35', sw: 2.6, fill: '#fcf8ee', clip: { c: '#a9d3ee', e: '#7fb5da' }, clipX: 44, back: { t: 'g', a: '#b7cdee', b: '#eaf1fb' }, br: -2, tab: { bg: '#a9d3ee', ink: '#21425a' }, hl: 'rgba(217,58,53,.2)', rule: 'rgba(110,140,190,.3)', pad: '50px 40px 34px', orn: [{ t: 'starsilver', x: 2, y: 83, s: 58, r: -12 }] },
+  { id: 'notebook', name: '레드 노트', shape: 'notebook', stroke: '#e4dccb', sw: 1.2, fill: '#fbf6ea', clip: { c: '#d6342e', e: '#a82320' }, clipX: 220, back: { t: 's', a: '#8f1f2c' }, br: 1.8, tab: { bg: '#d6342e', ink: '#ffffff' }, hl: 'rgba(214,52,46,.2)', rule: 'rgba(180,120,110,.3)', pad: '56px 34px 34px 58px', orn: [{ t: 'bowred', x: 73, y: 5, s: 96, r: 14 }] },
+  { id: 'olive', name: '올리브 타원', shape: 'oval', stroke: '#8d9b86', ring: '#a9b5a2', sw: 2, fill: '#fbf6ea', clip: { c: '#f2ebd9', e: '#d3c9ae' }, clipX: 80, back: { t: 'g', a: '#aebcab', b: '#e6ece2' }, br: -2.5, tab: { bg: '#f2ebd9', ink: '#4b5645' }, hl: 'rgba(141,155,134,.34)', rule: 'rgba(120,135,112,.28)', pad: '86px 62px 76px', orn: [{ t: 'heartcream', x: 4, y: 84, s: 60, r: -8 }, { t: 'starsage', x: 85, y: 50, s: 50, r: 10 }] },
+  { id: 'blue', name: '블루 스캘럽', shape: 'scallop', stroke: '#7d9cc8', sw: 1.8, fill: '#fcf8ee', clip: { c: '#cfd4da', e: '#98a1ac', metal: true }, clipX: 230, back: { t: 's', a: '#86a4c8' }, br: 2, tab: { bg: '#cfd4da', ink: '#2d3b4d' }, hl: 'rgba(125,156,200,.34)', rule: 'rgba(110,140,190,.3)', pad: '54px 44px 42px', orn: [{ t: 'heartsilver', x: 1, y: 84, s: 56, r: -8 }, { t: 'sealblue', x: 80, y: 84, s: 72, r: 0 }] },
+  { id: 'butter', name: '버터 스티치', shape: 'stitch', stroke: '#e2cf9a', sw: 1.6, dash: '#c9a54a', fill: '#fcf8ee', clip: { c: '#f2dc8f', e: '#d6b955' }, clipX: 140, back: { t: 'g', a: '#f0d374', b: '#fbefc4' }, br: -2, tab: { bg: '#f2dc8f', ink: '#5a4712' }, hl: 'rgba(240,211,116,.55)', rule: 'rgba(200,165,80,.3)', pad: '54px 44px 40px', orn: [{ t: 'buttonstar', x: 0, y: 1, s: 60, r: -10 }] },
+  { id: 'pink', name: '핑크 타원', shape: 'oval', stroke: '#eaa6b6', ring: '#f3c3cf', sw: 2, fill: '#fcf8f1', clip: { c: '#f2a9b9', e: '#d98698' }, clipX: 230, back: { t: 's', a: '#f3b9c5' }, br: 2.5, tab: { bg: '#f2a9b9', ink: '#5a2331' }, hl: 'rgba(242,169,185,.5)', rule: 'rgba(225,150,168,.3)', pad: '86px 62px 76px', orn: [{ t: 'starsilver', x: 2, y: 80, s: 60, r: -10 }, { t: 'bowpink', x: 78, y: 86, s: 70, r: 8 }] },
 ];
 const TH = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 
@@ -340,7 +340,7 @@ function renderCard(n) {
   const basic = !hasPremiumMemo();
   sheet.classList.toggle('basic-note', basic);
   sheet.classList.toggle('basic-details', basic && basicDetails);
-  const card = h('div', { class: 'card', 'data-id': n.id, style: `--pad:${t.pad};--hl:${t.hl};--hl2:${t.hl2};--rule:${t.rule};--br:${t.br}deg` });
+  const card = h('div', { class: 'card', 'data-id': n.id, style: `--pad:${t.pad};--hl:${t.hl};--rule:${t.rule};--br:${t.br}deg` });
   const bk = t.back;
   card.append(h('div', { class: 'backing', style: bk.t === 'g'
     ? `background-color:${bk.b};background-image:linear-gradient(90deg,${bk.a}99 50%,transparent 50%),linear-gradient(${bk.a}99 50%,transparent 50%);background-size:24px 24px`
@@ -373,9 +373,6 @@ function renderCard(n) {
     onpaste: (e) => { if (onImages(e.clipboardData?.files)) e.preventDefault(); } });
   if (!basic) body.value = n.text;
   const content = h('div', { class: 'content' }, kw, h('div', { class: 'ttlrow' }, ttl, sectionPicker(n)));
-  if (n.summary.length) content.append(h('div', { class: 'sum' },
-    h('div', { class: 'sh' }, iel('sparkle', 12), n.aiSource === 'claude' ? `${C.charName(S)}가 정리한 요점` : '요점 (기본 규칙으로 정리)'),
-    h('ul', {}, n.summary.map((s) => h('li', {}, s)))));
   if (rec && rec.noteId === n.id) content.append(recBar());
   content.append(body);
   if (n.audios.length) content.append(h('div', { class: 'audios' }, n.audios.map((a) => audioChip(n, a))));
@@ -1357,6 +1354,7 @@ function closeSettings() { modalOpen = false; modalKind = ''; $('#modal').hidden
 let boardFilter = 'all';
 let overviewDay;
 const overviewSelected = new Set();
+let overviewSelecting = false;
 function renderWidget() {
   const w = $('#widget'); if (!w || !S) return;
   w.hidden = !S.settings.showWidget;
@@ -1404,18 +1402,15 @@ async function aiBoardSummary(btn) {
 }
 function boardNote(n) {
   const title = n.title || n.keyword || n.text.trim().split('\n')[0] || '새 메모';
-  const organized = n.orgHash === noteHash(n);
-  const completed = n.events.filter((e) => e.done).length;
-  const progress = !organized ? 0 : n.events.length ? 50 + Math.round(50 * completed / n.events.length) : 100;
-  const toggle = h('button', { class: 'overview-select', type: 'button', 'aria-label': `${title} AI 정리 선택`, 'aria-pressed': String(overviewSelected.has(n.id)), onclick: () => {
+  const toggle = overviewSelecting ? h('button', { class: 'overview-select', type: 'button', 'aria-label': `${title} AI 정리 선택`, 'aria-pressed': String(overviewSelected.has(n.id)), onclick: () => {
     if (overviewSelected.has(n.id)) overviewSelected.delete(n.id); else overviewSelected.add(n.id);
     toggle.setAttribute('aria-pressed', String(overviewSelected.has(n.id)));
     refreshOverviewAction();
-  } });
-  const el = h('div', { class: 'overview-item', style: `--note-progress:${progress}%;--note-color:${secColor(secOf(n)).bg}` },
+  } }, iel('check', 13)) : null;
+  const el = h('div', { class: 'overview-item' },
     toggle,
     h('button', { class: 'overview-note-open', type: 'button', 'aria-label': `${title} 메모 열기`, title, onclick: () => openNote(n.id) },
-      h('span', {}, title), n.photos.length ? iel('image', 14) : null, h('small', { title: '정리 상태' }, `${progress}%`)));
+      h('span', {}, title), n.photos.length ? iel('image', 14) : null));
   bindImageDrop(el, () => byId(n.id));
   return el;
 }
@@ -1427,7 +1422,7 @@ function refreshOverviewAction() {
   const busy = selected.some((n) => organizing.has(n.id));
   button.disabled = selected.length === 0 || busy;
   $('#overview-selection').textContent = busy ? '메모를 정리하고 있어요…' : selected.length
-    ? `선택한 메모 ${selected.length}개에서 요점과 일정을 찾아요.` : '메모 옆 동그라미를 눌러 정리할 메모를 고르세요.';
+    ? `선택한 메모 ${selected.length}개에서 요점과 일정을 찾아요.` : '메모 목록에서 정리할 메모를 선택하세요.';
 }
 
 function overviewSchedule() {
@@ -1502,7 +1497,15 @@ function renderBoard() {
       } }, quick, h('button', { class: 'overview-icon', type: 'submit', 'aria-label': '메모 추가' }, iel('send', 16)))),
     overviewSchedule(),
     h('section', { class: 'overview-card' },
-      h('header', { class: 'overview-row' }, h('h2', {}, 'Memos'), h('button', { class: 'btn primary', type: 'button', onclick: () => newNote() }, iel('plus', 14), '메모')),
+      h('header', { class: 'overview-row' }, h('h2', {}, 'Memos'),
+        h('div', { class: 'overview-list-actions' },
+          total ? h('button', { class: 'overview-link overview-selection-toggle', type: 'button', 'aria-pressed': String(overviewSelecting), onclick: () => {
+            overviewSelecting = !overviewSelecting;
+            if (!overviewSelecting) overviewSelected.clear();
+            renderBoard();
+            $('.overview-selection-toggle')?.focus({ preventScroll: true });
+          } }, overviewSelecting ? '선택 취소' : '선택') : null,
+          h('button', { class: 'btn primary', type: 'button', onclick: () => newNote() }, iel('plus', 14), '메모'))),
       chips, total ? groups : h('p', { class: 'overview-muted' }, '아직 메모가 없어요.')),
     h('div', { class: 'overview-bottom' },
       h('div', { class: 'overview-mini' },

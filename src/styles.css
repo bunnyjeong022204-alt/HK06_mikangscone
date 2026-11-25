@@ -69,9 +69,6 @@ svg{display:block}
 .kw{width:100%;border:0;outline:0;padding:0 4px;background:linear-gradient(transparent 64%,var(--hl) 64%);font-family:var(--f-display);font-size:40px;line-height:1.15;color:var(--ink)}
 .kw::placeholder{color:rgba(58,52,48,.28)}
 .ttl{border:0;outline:0;border-bottom:1px dashed var(--line);background:transparent;padding:3px 2px;font-size:14px;color:var(--ink-soft);font-family:var(--f-ui)}
-.sum{background:var(--hl2);border-radius:10px;padding:7px 10px;font-size:12.5px;line-height:1.5}
-.sum .sh{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-soft);margin-bottom:2px}
-.sum ul{margin:0;padding-left:16px}
 .body{flex:1;min-height:70px;resize:none;border:0;outline:0;background-image:repeating-linear-gradient(to bottom,transparent 0 29px,var(--rule) 29px 30px);background-attachment:local;background-color:transparent;font-family:var(--f-hand);font-size:23px;line-height:30px;color:var(--ink);padding:0 2px}
 .body::placeholder{color:rgba(58,52,48,.35)}
 .photos,.audios{display:flex;gap:8px;flex-wrap:wrap}

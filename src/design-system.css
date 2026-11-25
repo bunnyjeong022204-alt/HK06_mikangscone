@@ -102,7 +102,6 @@
 .basic-note .orn,
 .basic-note:not(.basic-details) .kw,
 .basic-note:not(.basic-details) .ttlrow,
-.basic-note:not(.basic-details) .sum,
 .basic-note:not(.basic-details) .chips,
 .basic-note:not(.basic-details) .bar,
 .basic-note .bar .sw,
@@ -343,41 +342,46 @@
   outline: 2px dashed var(--mikkang-action);
   outline-offset: 2px;
 }
-.overview-items { display: grid; gap: 5px; margin-top: 4px; }
+.overview-list-actions { display: flex; align-items: center; gap: 8px; }
+.overview-items { display: grid; margin-top: 4px; }
 .overview-item {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  min-height: 37px;
-  padding: 4px 7px 4px 5px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--note-color), #fffdf7 47%) var(--note-progress), #f3efe3 var(--note-progress));
+  min-height: 36px;
+  padding: 0 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mikkang-line) 58%, transparent);
 }
+.overview-item:last-child { border-bottom-color: transparent; }
+.overview-item:hover { background: var(--mikkang-paper); }
 .overview-select {
-  width: 24px;
-  height: 24px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
   flex: none;
-  border: 2px solid color-mix(in srgb, var(--note-color), var(--mikkang-action) 40%);
-  border-radius: 50%;
+  color: transparent;
+  border: 1px solid var(--mikkang-sage);
+  border-radius: 5px;
   background: var(--mikkang-surface);
 }
-.overview-select[aria-pressed="true"] { background: var(--mikkang-action); box-shadow: inset 0 0 0 4px var(--mikkang-surface); }
+.overview-select[aria-pressed="true"] { color: white; background: var(--mikkang-action); }
 .overview-note-open {
   display: flex;
   flex: 1;
   align-items: center;
   gap: 5px;
   min-width: 0;
-  padding: 2px;
+  padding: 8px 2px;
   border: 0;
   background: none;
   text-align: left;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .overview-note-open span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.overview-note-open small { padding: 3px 5px; border-radius: 12px; background: var(--mikkang-surface); }
 
 .overview-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .overview-mini { display: grid; gap: 8px; }
