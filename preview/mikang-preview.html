@@ -37,6 +37,7 @@ svg{display:block}
 /* ───── 책갈피 ───── */
 .dock{position:absolute;top:24px;bottom:150px;z-index:30;display:flex;flex-direction:column;gap:9px;padding:4px 0;overflow-y:auto;scrollbar-width:none;transition:transform .35s cubic-bezier(.2,.9,.3,1.15),opacity .25s}
 .dock::-webkit-scrollbar{display:none}
+.dock:focus{outline:none}
 .side-right .dock{right:0;align-items:flex-end}
 .side-left .dock{left:0;align-items:flex-start}
 .stage.dock-hidden .dock{display:none}
@@ -877,7 +878,7 @@ body{overflow:hidden}
     </aside>
   </div>
   <div class="stage side-right" id="stage">
-  <nav class="dock" id="dock" aria-label="메모 책갈피"></nav>
+  <nav class="dock" id="dock" tabindex="-1" aria-label="메모 책갈피"></nav>
   <section class="sheet" id="sheet" role="dialog" aria-label="메모지"></section>
   <aside class="peek" id="peek" aria-live="polite"></aside>
   <div class="bubble" id="bubble" hidden></div>
@@ -1760,7 +1761,7 @@ function togglePetBookmarks() {
   closeBubble();
   applyMode();
   api.focus();
-  $('.overview-tab')?.focus({ preventScroll: true });
+  $('#dock').focus({ preventScroll: true });
 }
 
 /* ─────────── 메모지 카드 ─────────── */

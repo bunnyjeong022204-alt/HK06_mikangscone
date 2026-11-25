@@ -315,7 +315,7 @@ function togglePetBookmarks() {
   closeBubble();
   applyMode();
   api.focus();
-  $('.overview-tab')?.focus({ preventScroll: true });
+  $('#dock').focus({ preventScroll: true });
 }
 
 /* ─────────── 메모지 카드 ─────────── */
