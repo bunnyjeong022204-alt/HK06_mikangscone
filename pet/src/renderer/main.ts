@@ -115,7 +115,7 @@ async function main(): Promise<void> {
   }
   const petMenu = new PetQuickMenu(toggleToy);
   const emptyPaper = new EmptyRosterPaper((anchor) => petMenu.open(anchor, false, false, true));
-  let nextPaperCursorPoll = 0;
+  let nextPointerPoll = 0;
   document.addEventListener('pointermove', (event) => {
     if (sceneReady && pets.length === 0 && event.isPrimary) {
       pointer = { x: event.clientX, y: event.clientY };
@@ -286,6 +286,20 @@ async function main(): Promise<void> {
     if (held.dragging) positionHeld(held);
   }
   canvas.addEventListener('pointermove', moveHeld);
+  canvas.addEventListener('mousemove', (event) => {
+    if (!clickThrough) return;
+    pointer = { x: event.clientX, y: event.clientY };
+    lastPointerAt = performance.now();
+    updateMouseTarget();
+  });
+  canvas.addEventListener('mousedown', (event) => {
+    if (event.button !== 2 || event.shiftKey || held) return;
+    pointer = { x: event.clientX, y: event.clientY };
+    if (!hit()) return;
+    event.preventDefault();
+    petMenu.close();
+    window.petAPI.openBookmarks();
+  });
   canvas.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || !event.isPrimary || held || petMenu.isOpen) return;
     pointer = { x: event.clientX, y: event.clientY };
@@ -336,16 +350,11 @@ async function main(): Promise<void> {
   window.addEventListener('pointercancel', release);
   canvas.addEventListener('lostpointercapture', release);
   canvas.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    if (!event.shiftKey) return;
     pointer = { x: event.clientX, y: event.clientY };
     const pet = hit();
-    if (!pet) return;
-    event.preventDefault();
-    if (event.shiftKey) {
-      petMenu.open(pointer, hasToy(pet), toyEnabled);
-    } else {
-      petMenu.close();
-      window.petAPI.openBookmarks();
-    }
+    if (pet) petMenu.open(pointer, hasToy(pet), toyEnabled);
   });
   window.addEventListener('blur', release);
 
@@ -653,17 +662,29 @@ async function main(): Promise<void> {
     }
   }
 
+  function updateMouseTarget() {
+    const hovered = hit();
+    const capturingWheel = toyEnabled && pointerInArea() && !!toyOwner()?.species.fishingToy;
+    const ignore = !held && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hovered;
+    if (ignore !== clickThrough) { clickThrough = ignore; window.petAPI.setClickThrough(ignore); }
+    canvas.style.cursor = held?.dragging ? 'grabbing' : hovered ? 'grab' : 'default';
+  }
+
   function tick(now: number) {
     bounds.width = window.innerWidth; bounds.height = window.innerHeight;
     const delta = Math.min(now - previous, 100); previous = now;
     renderer.clear();
     const empty = sceneReady && pets.length === 0;
     emptyPaper.update(empty, petMenu.isOpen, bounds.width, bounds.height, delta);
-    if (empty && !petMenu.isOpen && now >= nextPaperCursorPoll && now - lastPointerAt > 90) {
-      nextPaperCursorPoll = now + 50;
+    // Click-through windows can miss forwarded movement, including when a pet
+    // walks under a stationary cursor. Use the system cursor until hit testing resumes.
+    if (sceneReady && clickThrough && !document.hidden && now >= nextPointerPoll && now - lastPointerAt > 90) {
+      nextPointerPoll = now + 60;
       void window.petAPI.getCursorPoint().then((point) => {
-        if (pets.length === 0 && performance.now() - lastPointerAt > 90) pointer = point;
-      });
+        if (!clickThrough || performance.now() - lastPointerAt <= 90) return;
+        pointer = point;
+        updateMouseTarget();
+      }).catch(() => {});
     }
     updateToy(now, delta);
     const heldAnimation = held?.pet.species.animations.dragged;
@@ -768,10 +789,7 @@ async function main(): Promise<void> {
         if (b && now > a.until && now > b.until) { converse(a, b, now); break; }
       }
     }
-    const capturingWheel = toyEnabled && pointerInArea() && !!toyOwner()?.species.fishingToy;
-    const ignore = !held && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hit();
-    if (ignore !== clickThrough) { clickThrough = ignore; window.petAPI.setClickThrough(ignore); }
-    canvas.style.cursor = held?.dragging ? 'grabbing' : hit() ? 'grab' : 'default';
+    updateMouseTarget();
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);

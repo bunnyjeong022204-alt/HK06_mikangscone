@@ -7,6 +7,8 @@ on:
     tags: ['v*']
     branches: ['main', 'claude/quirky-mayer-sc9las']
     paths: ['src/**', 'electron/**', 'pet/**', 'build/**', 'package.json', 'package-lock.json', '.github/workflows/build.yml']
+permissions:
+  contents: read
 jobs:
   build:
     strategy:
@@ -27,7 +29,7 @@ jobs:
         env:
           # 인증서 없이 빌드: Windows는 서명 안 함, macOS는 package.json의 identity "-" 로 임시(ad-hoc) 서명
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ runner.os == 'Windows' && 'false' || 'true' }}
-      - name: Check Windows standalone app starts without Node.js
+      - name: Check Windows standalone startup and pet files after reopening
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -38,6 +40,7 @@ jobs:
           $exe = (Resolve-Path -LiteralPath 'dist/MikangMemo-Windows.exe').Path
           $env:Path = "$env:SystemRoot\System32;$env:SystemRoot\System32\WindowsPowerShell\v1.0;$env:SystemRoot"
           $launcher = Start-Process -FilePath $exe -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
+          $repeat = $null
           try {
             $started = $false
             for ($attempt = 0; $attempt -lt 45; $attempt++) {
@@ -47,7 +50,22 @@ jobs:
               Start-Sleep -Seconds 1
             }
             if (!$started) { throw 'Standalone app did not finish starting' }
+            $app = Get-CimInstance Win32_Process -Filter "ParentProcessId=$($launcher.Id)" |
+              Where-Object { $_.Name -eq 'Mikang Memo.exe' } | Select-Object -First 1
+            if (!$app.ExecutablePath) { throw 'Cannot locate the running app' }
+            $pets = Join-Path (Split-Path -Parent $app.ExecutablePath) 'resources/assets/species'
+            $repeat = Start-Process -FilePath $exe -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
+            if (!$repeat.WaitForExit(45000)) { throw 'Second launch did not return to the running app' }
+            if ($launcher.HasExited) { throw 'Second launch closed the running app' }
+            foreach ($id in @('mikkang', 'mono-cat', 'pastel-octopus', 'vintage-teddy')) {
+              $folder = Join-Path $pets $id
+              $species = Get-Content -Raw -LiteralPath (Join-Path $folder 'species.json') | ConvertFrom-Json
+              if ($species.id -ne $id -or !(Test-Path -LiteralPath (Join-Path $folder $species.animations.idle.sheet))) {
+                throw "A second launch removed a pet: $id"
+              }
+            }
           } finally {
+            if ($repeat -and !$repeat.HasExited) { Stop-Process -Id $repeat.Id }
             Get-CimInstance Win32_Process -Filter "ParentProcessId=$($launcher.Id)" |
               ForEach-Object { Stop-Process -Id $_.ProcessId -ErrorAction SilentlyContinue }
             if (!$launcher.HasExited) { Stop-Process -Id $launcher.Id }
@@ -59,3 +77,58 @@ jobs:
             dist/*.exe
             dist/*.dmg
           if-no-files-found: error
+
+  sync-root-downloads:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: main-desktop-downloads
+    env:
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: MikangMemo-jhj-*
+          path: ${{ runner.temp }}/desktop-artifacts
+      - name: Commit and push verified desktop files
+        shell: bash
+        run: |
+          source_paths=(.github/workflows/build.yml build electron package.json package-lock.json pet src)
+          if ! git diff --quiet "$GITHUB_SHA" HEAD -- "${source_paths[@]}"; then
+            echo "A newer app revision is already on main."
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git lfs install --local
+          artifacts="$RUNNER_TEMP/desktop-artifacts"
+          arm64=("$artifacts"/MikangMemo-jhj-macOS/*-mac-arm64.dmg)
+          intel=("$artifacts"/MikangMemo-jhj-macOS/*-mac-x64.dmg)
+          test "${#arm64[@]}" -eq 1 && test -s "${arm64[0]}"
+          test "${#intel[@]}" -eq 1 && test -s "${intel[0]}"
+          cp "$artifacts/MikangMemo-jhj-Windows/MikangMemo-Windows.exe" MikangMemo-Windows.exe
+          cp "${arm64[0]}" MikangMemo-macOS-AppleSilicon.dmg
+          cp "${intel[0]}" MikangMemo-macOS-Intel.dmg
+          git add -- MikangMemo-Windows.exe MikangMemo-macOS-AppleSilicon.dmg MikangMemo-macOS-Intel.dmg
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Sync desktop downloads for ${GITHUB_SHA:0:7}"
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            if ! git diff --quiet "$GITHUB_SHA" origin/main -- "${source_paths[@]}"; then
+              echo "A newer app revision is already on main."
+              exit 0
+            fi
+            git rebase origin/main
+            if git push origin HEAD:main; then exit 0; fi
+          done
+          exit 1

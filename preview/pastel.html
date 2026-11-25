@@ -3671,6 +3671,10 @@ async function refreshPetControls(action, value) {
   }
   if (!target?.isConnected) return;
   const species = state.species;
+  if (!species.length) {
+    target.replaceChildren(h('button', { class: 'btn', type: 'button', onclick: () => refreshPetControls() }, '펫 목록 다시 불러오기'));
+    return;
+  }
   const select = h('select', { 'aria-label': '펫 바꾸기', onchange: (e) => refreshPetControls('show', e.target.value) },
     h('option', { value: '', disabled: true, selected: !species.some((item) => item.selected) }, '펫 바꾸기'),
     species.map((item) => h('option', { value: item.id, selected: item.selected }, item.label)));

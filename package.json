@@ -100,7 +100,8 @@
       "shortcutName": "Mikang Memo"
     },
     "portable": {
-      "artifactName": "MikangMemo-Windows.exe"
+      "artifactName": "MikangMemo-Windows.exe",
+      "unpackDirName": true
     },
     "afterPack": "build/after-pack.js"
   }
