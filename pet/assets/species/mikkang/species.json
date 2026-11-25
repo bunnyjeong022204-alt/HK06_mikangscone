@@ -26,7 +26,7 @@
     "idleMaxMs": 3700,
     "walkMinMs": 4500,
     "walkMaxMs": 8500,
-    "spriteScale": 0.3125
+    "spriteScale": 0.276
   },
   "attribution": {
     "author": "사용자 제공 이미지",

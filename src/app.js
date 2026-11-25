@@ -1334,6 +1334,8 @@ let boardFilter = 'all';
 let overviewDay;
 const overviewSelected = new Set();
 let overviewSelecting = false;
+let overviewQuery = '';
+let overviewPinnedOnly = false;
 
 function openBoard(filter) {
   overviewDay = startOfDay(new Date());
@@ -1380,18 +1382,58 @@ async function aiBoardSummary(btn) {
   setMood('idle'); if (modalKind === 'board') renderBoard();
 }
 function boardNote(n) {
-  const title = n.title || n.keyword || n.text.trim().split('\n')[0] || '새 메모';
+  const title = memoTitle(n) || n.text.trim().split('\n')[0] || '새 메모';
+  const excerpt = n.text.trim().replace(/\s+/g, ' ');
   const toggle = overviewSelecting ? h('button', { class: 'overview-select', type: 'button', 'aria-label': `${title} AI 정리 선택`, 'aria-pressed': String(overviewSelected.has(n.id)), onclick: () => {
     if (overviewSelected.has(n.id)) overviewSelected.delete(n.id); else overviewSelected.add(n.id);
     toggle.setAttribute('aria-pressed', String(overviewSelected.has(n.id)));
     refreshOverviewAction();
   } }, iel('check', 13)) : null;
+  const pin = h('button', { class: 'overview-pin', type: 'button', 'aria-label': `${title} 고정`,
+    'aria-pressed': String(n.pinned === true), title: n.pinned ? '고정 해제' : '메모 고정', onclick: () => {
+      n.pinned = !n.pinned;
+      save();
+      if (overviewPinnedOnly && !n.pinned) {
+        renderOverviewNotes();
+        $('.overview-pinned-only')?.focus({ preventScroll: true });
+      } else {
+        pin.setAttribute('aria-pressed', String(n.pinned));
+        pin.title = n.pinned ? '고정 해제' : '메모 고정';
+      }
+    } }, iel('pin', 15));
   const el = h('div', { class: 'overview-item' },
     toggle,
     h('button', { class: 'overview-note-open', type: 'button', 'aria-label': `${title} 메모 열기`, title, onclick: () => openNote(n.id) },
-      h('span', {}, title), n.photos.length ? iel('image', 14) : null));
+      h('span', { class: 'overview-note-text' }, h('span', {}, title),
+        excerpt && excerpt !== title ? h('small', {}, excerpt) : null),
+      n.photos.length ? iel('image', 14) : null), pin);
   bindImageDrop(el, () => byId(n.id));
   return el;
+}
+
+function renderOverviewNotes() {
+  const groups = $('#overview-groups');
+  if (!groups) return;
+  groups.replaceChildren();
+  const query = overviewQuery.trim().normalize('NFC').toLocaleLowerCase('ko');
+  const keywords = query.split(/\s+/).filter(Boolean);
+  for (const section of [...S.sections, INBOX]) {
+    if (boardFilter !== 'all' && boardFilter !== section.id) continue;
+    const notes = notesIn(section.id).filter((n) => {
+      if (isEmpty(n) || (overviewPinnedOnly && !n.pinned)) return false;
+      const text = `${memoTitle(n)} ${n.text}`.normalize('NFC').toLocaleLowerCase('ko');
+      return keywords.every((word) => text.includes(word));
+    });
+    if (!notes.length && (query || overviewPinnedOnly || section === INBOX)) continue;
+    const group = h('section', { class: 'bgroup', 'aria-label': `${section.name} 섹션` },
+      h('header', { class: 'overview-row' }, h('h3', {}, `${section.name} ${notes.length}`),
+        h('button', { type: 'button', class: 'overview-link', onclick: () => newNote(true, section.id), 'aria-label': `${section.name}에 새 메모` }, '＋')),
+      h('div', { class: 'overview-items' }, notes.map(boardNote)));
+    bindImageDrop(group, () => null, () => newNote(false, section.id));
+    groups.append(group);
+  }
+  if (!groups.childElementCount) groups.append(h('p', { class: 'overview-muted', role: 'status' },
+    query ? '검색 결과가 없어요.' : '고정한 메모가 없어요.'));
 }
 
 function refreshOverviewAction() {
@@ -1466,17 +1508,7 @@ function renderBoard() {
   const chips = h('div', { class: 'bfilter', role: 'group', 'aria-label': '섹션 고르기' },
     h('button', { type: 'button', 'aria-pressed': String(boardFilter === 'all'), onclick: () => { boardFilter = 'all'; renderBoard(); } }, `전체 ${total}`),
     secs.map((x) => { const c = secColor(x); return h('button', { type: 'button', 'aria-pressed': String(boardFilter === x.id), style: `--tc:${c.bg};--ti:${c.ink}`, onclick: () => { boardFilter = x.id; renderBoard(); } }, `${x.name} ${live(x.id).length}`); }));
-  const groups = h('div', { class: 'overview-groups' });
-  for (const x of secs) {
-    if (boardFilter !== 'all' && boardFilter !== x.id) continue;
-    const list = live(x.id);
-    const wall = h('div', { class: 'overview-items' }, list.map(boardNote));
-    const g = h('section', { class: 'bgroup', 'aria-label': `${x.name} 섹션` },
-      h('header', { class: 'overview-row' }, h('h3', {}, `${x.name} ${list.length}`),
-        h('button', { type: 'button', class: 'overview-link', onclick: () => newNote(true, x.id), 'aria-label': `${x.name}에 새 메모` }, '＋')), wall);
-    bindImageDrop(g, () => null, () => newNote(false, x.id));
-    groups.append(g);
-  }
+  const groups = h('div', { id: 'overview-groups' });
   const quick = h('input', { type: 'text', placeholder: '메모를 입력하세요', 'aria-label': '빠른 메모', required: true });
   const audioMinutes = Math.floor(S.notes.reduce((sum, n) => sum + n.audios.reduce((seconds, a) => seconds + (Number(a.dur) || 0), 0), 0) / 60);
   const avatar = S.settings.character === 'mikang'
@@ -1503,7 +1535,7 @@ function renderBoard() {
       } }, quick, h('button', { class: 'overview-icon', type: 'submit', 'aria-label': '메모 추가' }, iel('send', 16)))),
     overviewSchedule(),
     h('section', { class: 'overview-card' },
-      h('header', { class: 'overview-row' }, h('h2', {}, 'Memos'),
+      h('header', { class: 'overview-row' }, h('h2', {}, '메모 모아보기'),
         h('div', { class: 'overview-list-actions' },
           total ? h('button', { class: 'overview-link overview-selection-toggle', type: 'button', 'aria-pressed': String(overviewSelecting), onclick: () => {
             overviewSelecting = !overviewSelecting;
@@ -1512,6 +1544,22 @@ function renderBoard() {
             $('.overview-selection-toggle')?.focus({ preventScroll: true });
           } }, overviewSelecting ? '선택 취소' : '선택') : null,
           h('button', { class: 'btn primary', type: 'button', onclick: () => newNote() }, iel('plus', 14), '메모'))),
+      total ? h('div', { class: 'overview-library-tools' },
+        h('input', { id: 'overview-search', type: 'search', value: overviewQuery, 'aria-label': '메모 검색',
+          placeholder: '제목 또는 내용 검색', oninput: (e) => { overviewQuery = e.target.value; renderOverviewNotes(); },
+          onkeydown: (e) => {
+            if (e.key !== 'Escape' || !e.currentTarget.value) return;
+            e.preventDefault();
+            e.stopPropagation();
+            overviewQuery = e.currentTarget.value = '';
+            renderOverviewNotes();
+          },
+        }),
+        h('button', { type: 'button', class: 'overview-pinned-only', 'aria-pressed': String(overviewPinnedOnly), onclick: (e) => {
+          overviewPinnedOnly = !overviewPinnedOnly;
+          e.currentTarget.setAttribute('aria-pressed', String(overviewPinnedOnly));
+          renderOverviewNotes();
+        } }, iel('pin', 14), '고정한 메모')) : null,
       chips, total ? groups : h('p', { class: 'overview-muted' }, '아직 메모가 없어요.')),
     h('button', { class: 'overview-card overview-record', type: 'button', onclick: () => { closeBoard(); quickRecord(); } },
       iel(rec ? 'stop' : 'mic', 19), h('span', {}, rec ? '녹음 중' : '녹음', h('small', {}, `누적 ${audioMinutes}분`))),
@@ -1531,6 +1579,7 @@ function renderBoard() {
         ai ? h('p', { class: 'bsum-ai' }, ai.text) : [h('p', {}, ov.head), h('ul', {}, ov.lines.map((line) => h('li', {}, line)))],
         h('button', { class: 'btn', type: 'button', onclick: (e) => aiBoardSummary(e.currentTarget) }, iel('sparkle', 14), ai ? '다시 요약' : 'AI 요약'))));
   m.replaceChildren(panel);
+  renderOverviewNotes();
   panel.scrollTop = previousScroll;
   refreshOverviewAction();
   void refreshPetControls();
