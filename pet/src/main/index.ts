@@ -73,7 +73,7 @@ function watchActiveSpecies(speciesId: string, publish: (scene: SpeciesConfig) =
   unwatchSpecies = () => { watcher.close(); unwatchers.forEach((stop) => stop()); };
 }
 
-export function startPet(notifyVisibilityChange?: () => void): void {
+export function startPet(notifyVisibilityChange: () => void, openMemo: () => void): void {
   onVisibilityChange = notifyVisibilityChange;
   registerAssetProtocolHandler();
   ensureLocalSpeciesRoot();
@@ -120,6 +120,9 @@ export function startPet(notifyVisibilityChange?: () => void): void {
     if (event.sender === window.webContents) {
       void runPetMenuAction(window, action, selectPet, dismissPet, () => setPetVisible(false));
     }
+  });
+  ipcMain.on(IPC.OPEN_MEMO, (event) => {
+    if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents) openMemo();
   });
 
   ipcMain.on(IPC.RENDERER_READY, (event) => {

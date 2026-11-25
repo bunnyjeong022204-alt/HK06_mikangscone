@@ -110,6 +110,7 @@ function buildTrayMenu() {
     { label: '녹음 메모', accelerator: 'CommandOrControl+Shift+R', click: () => send('cmd', 'record') },
     { label: '일정 보기', click: () => send('cmd', 'agenda') },
     { label: '메모 모아보기', click: () => send('cmd', 'board') },
+    { label: 'AI 비서', click: () => send('cmd', 'assistant') },
     { label: '데스크톱 펫 표시', type: 'checkbox', checked: pet.isPetVisible(), click: (item) => pet.setPetVisible(item.checked) },
     { type: 'separator' },
     { label: '화면 모드', submenu: [mode('auto', '자동 (바탕화면이면 책갈피, 앱을 쓰면 캐릭터만)'), mode('desktop', '항상 책갈피'), mode('pet', '항상 캐릭터만')] },
@@ -212,7 +213,7 @@ app.whenReady().then(() => {
   if (IS_MAC && app.dock) app.dock.hide(); // 독 아이콘 없이 상주 (메뉴 막대 아이콘으로 조작)
   session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(['media', 'notifications', 'clipboard-sanitized-write'].includes(perm)));
   session.defaultSession.setPermissionCheckHandler((_wc, perm) => ['media', 'notifications'].includes(perm));
-  pet.startPet(() => { if (tray) buildTrayMenu(); });
+  pet.startPet(() => { if (tray) buildTrayMenu(); }, () => send('cmd', 'pet-memo'));
   createOverlay();
   createTray();
   registerShortcuts();

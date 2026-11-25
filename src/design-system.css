@@ -75,6 +75,12 @@
 .side-right .sheet.basic-note { right: min(150px, max(16px, calc(100vw - 426px))); }
 .side-left .sheet.basic-note { left: min(150px, max(16px, calc(100vw - 426px))); }
 
+.stage #sheet.from-pet {
+  right: min(150px, max(16px, calc(100vw - 426px)));
+  left: auto;
+  transform-origin: top right;
+}
+
 .basic-note .card {
   display: flex;
   flex-direction: column;

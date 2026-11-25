@@ -332,7 +332,12 @@ async function main(): Promise<void> {
     const pet = hit();
     if (!pet) return;
     event.preventDefault();
-    petMenu.open(pointer, hasToy(pet), toyEnabled);
+    if (event.shiftKey) {
+      petMenu.open(pointer, hasToy(pet), toyEnabled);
+    } else {
+      petMenu.close();
+      window.petAPI.openMemo();
+    }
   });
   window.addEventListener('blur', release);
 

@@ -114,7 +114,7 @@ const DEFAULTS = {
   character: 'mikang', petName: '', customChar: '', side: 'right',
   modeOverride: 'auto', petTarget: 'all', peek: true, peekDelay: 350,
   autoOrganize: true, preDeadline: 60, preNormal: 10, morningBrief: true,
-  launchAtLogin: true, petPos: null, consentShown: false, showWidget: true, weatherCity: '서울',
+  launchAtLogin: true, consentShown: false, showWidget: true, weatherCity: '서울',
   proPreview: false,
 };
 let S = null, saveT = 0;
@@ -190,12 +190,12 @@ function applyMode() {
   st.classList.toggle('dock-hidden', !showDock);
   st.classList.toggle('pet-mode', pm);
   const bg = $('#demoBg'); if (bg) bg.classList.toggle('desktop', !pm);
-  placePet();
+  if (bubble.open) placeBubble();
   updateHit();
 }
 
 /* ─────────── 클릭 통과 판정 ─────────── */
-const HIT = '.tab,.subs,.sheet.open,.pet:not(.hide),.bubble,.peek.open,.toast,.modal,.widget';
+const HIT = '.tab,.subs,.sheet.open,.bubble,.peek.open,.toast,.modal,.widget';
 function setInter(on) { if (on !== interactive) { interactive = on; api.setInteractive(on); } }
 function updateHit() {
   if ((modalOpen && modalKind !== 'board') || dragging) { setInter(true); return; }
@@ -254,7 +254,7 @@ function renderTabs() {
   dock.append(h('button', { class: 'tab agenda' + (agendaOpen ? ' open' : ''), type: 'button', 'aria-expanded': String(agendaOpen), onclick: toggleAgenda },
     h('span', { class: 'k', style: 'display:flex;align-items:center;gap:5px' }, iel('cal', 15), '일정'),
     cnt ? h('span', { class: 'when' }, `오늘 ${cnt}개`) : null));
-  renderPetBadges(); renderWidget();
+  renderWidget();
 }
 function setTabText(n) { const b = $(`.tab[data-id="${n.id}"] .k`); if (b) b.textContent = n.keyword || '새 메모'; }
 
@@ -283,7 +283,7 @@ function closeAll() {
   api.release();
 }
 function toggleNote(id) { if (openId === id) closeAll(); else openNote(id); }
-function openNote(id) {
+function openNote(id, { fromPet = false } = {}) {
   const n = byId(id); if (!n) return;
   if (modalKind === 'board') closeBoard();
   if (openId && openId !== id) commitCurrent();
@@ -291,6 +291,7 @@ function openNote(id) {
   closePeek(true); closeBubble();
   agendaOpen = false; $('#agenda').classList.remove('open');
   openId = n.id; n.ring = false; n.viewedAt = Date.now(); selStk = null; openSec = secIdOf(n);
+  $('#sheet').classList.toggle('from-pet', fromPet);
   renderCard(n); fit();
   $('#sheet').classList.add('open');
   renderTabs(); applyMode(); save();
@@ -309,12 +310,26 @@ function blankNote(sectionId) {
   const sec = sectionId ?? openSec ?? '';
   return { id: uid(), theme: THEMES[idx].id, sectionId: sec, secManual: !!sec, title: '', text: '', keyword: '', kwManual: false, summary: [], events: [], photos: [], stickers: [], audios: [], aiSource: '', createdAt: Date.now(), viewedAt: Date.now(), orgHash: '' };
 }
-function newNote(focus = true, sectionId) {
+function newNote(focus = true, sectionId, options) {
   if (openId) commitCurrent();
   const n = blankNote(sectionId);
-  S.notes.unshift(n); save(); openNote(n.id);
+  S.notes.unshift(n); save(); openNote(n.id, options);
   if (focus) setTimeout(() => { const t = $('#sheet .body'); t && t.focus(); }, 80);
   return n;
+}
+
+function openPetMemo() {
+  if (modalKind === 'board') closeBoard();
+  else if (viewerKeys) closeViewer();
+  else if (modalOpen) closeSettings();
+  if (!openId || !byId(openId)) {
+    newNote(true, undefined, { fromPet: true });
+    return;
+  }
+  $('#sheet').classList.add('from-pet');
+  closeBubble();
+  api.focus();
+  $('#sheet .body')?.focus();
 }
 
 /* ─────────── 메모지 카드 ─────────── */
@@ -908,9 +923,9 @@ async function startRecording(n, kind) {
       if (s > 15 * 60) stopRecording(); // 최대 15분
     }, 100);
     mr.start(1000);
-    setMood('listen'); renderPet();
+    setMood('listen');
     if (n && openId === n.id) renderCard(n);
-    if (kind === 'command') say('듣고 있어요. 다 말하면 저를 한 번 더 눌러주세요.', { ttl: 0, menu: false });
+    if (kind === 'command') say('듣고 있어요.', { ttl: 0, menu: false, actions: [{ label: '녹음 끝내기', run: stopRecording }] });
   } catch (e) {
     rec = null; setMood('idle');
     toast({ title: '마이크를 쓸 수 없어요', body: '시스템 설정에서 Mikang Memo의 마이크 권한을 켜주세요.', ttl: 5000 });
@@ -923,14 +938,14 @@ function startDictation(d, n, kind) {
   r.text = () => (finalText + ' ' + partial).trim();
   const showLive = () => {
     const l = $('#recLive'); if (l) l.textContent = r.text().slice(-70) || '듣고 있어요…';
-    if (kind === 'command' && bubble.open) { const m = $('#bubble .msg'); if (m) m.textContent = r.text() || '듣고 있어요. 다 말하면 저를 한 번 더 눌러주세요.'; }
+    if (kind === 'command' && bubble.open) { const m = $('#bubble .msg'); if (m) m.textContent = r.text() || '듣고 있어요.'; }
   };
   r.offs.push(d.onPartial(({ text }) => { partial = text || ''; showLive(); }));
   r.offs.push(d.onFinal(({ text }) => { if (text) finalText += (finalText ? ' ' : '') + text; partial = ''; showLive(); }));
   r.offs.push(d.onState(({ state, reason }) => { if (state === 'idle' && !r.done) finishDictation(r, reason); }));
   rec = r;
   d.start().catch((e) => {
-    if (r.done) return; r.done = true; r.offs.forEach((f) => f()); if (rec === r) rec = null; setMood('idle'); renderPet();
+    if (r.done) return; r.done = true; r.offs.forEach((f) => f()); if (rec === r) rec = null; setMood('idle');
     const n0 = r.noteId && byId(r.noteId); if (n0 && openId === n0.id) renderCard(n0);
     toast({ title: '받아쓰기를 시작하지 못했어요', body: e && e.code === 'not_granted' ? '마이크나 받아쓰기 권한이 꺼져 있어요.' : '이 브라우저에서는 받아쓰기를 쓸 수 없어요. Chrome에서 열어주세요.', ttl: 5000 });
   });
@@ -938,15 +953,15 @@ function startDictation(d, n, kind) {
     const t = $('#recTime'); if (t) t.textContent = fmtDur((Date.now() - r.t0) / 1000);
     const l = $('#recLvl'); if (l) l.style.width = (30 + 30 * Math.sin(Date.now() / 180)) + '%';
   }, 100);
-  setMood('listen'); renderPet();
+  setMood('listen');
   if (n && openId === n.id) renderCard(n);
-  if (kind === 'command') say('듣고 있어요. 다 말하면 저를 한 번 더 눌러주세요.', { ttl: 0, menu: false });
+  if (kind === 'command') say('듣고 있어요.', { ttl: 0, menu: false, actions: [{ label: '녹음 끝내기', run: stopRecording }] });
 }
 async function finishDictation(r, reason) {
   if (r.done) return; r.done = true;
   clearInterval(r.timer); r.offs.forEach((f) => f());
   if (rec === r) rec = null;
-  renderPet();
+
   const text = r.text();
   const n = r.noteId && byId(r.noteId);
   if (!text) {
@@ -968,7 +983,7 @@ function stopRecording() {
     r.stream.getTracks().forEach((t) => t.stop()); try { r.ac.close(); } catch {}
     const blob = new Blob(r.chunks, { type: r.mime });
     const dur = (Date.now() - r.t0) / 1000;
-    renderPet();
+
     if (dur < 1 || !blob.size) { setMood('idle'); const n0 = r.noteId && byId(r.noteId); if (n0 && openId === n0.id) renderCard(n0); return; }
     setMood('think');
     const ext = /mp4/.test(r.mime) ? 'm4a' : 'webm';
@@ -1028,70 +1043,13 @@ function quickRecord() {
 }
 
 /* ─────────── 캐릭터(펫) ─────────── */
-let petChar = '';
 function setMood(m, ttl = 0) {
   clearTimeout(moodT);
   mood = rec && m === 'idle' ? 'listen' : m;
-  const pet = $('#pet'); pet.classList.remove('mood-idle', 'mood-talk', 'mood-alert', 'mood-think', 'mood-listen'); pet.classList.add('mood-' + mood);
   const pr = $('#perch'); if (pr) { pr.className = pr.className.replace(/mood-\w+/, 'mood-' + mood); }
   if (ttl) moodT = setTimeout(() => setMood('idle'), ttl);
 }
-function renderPet() {
-  const pet = $('#pet');
-  const sig = S.settings.character + '|' + (S.settings.character === 'custom' ? S.settings.customChar.length : '');
-  if (sig !== petChar) {
-    petChar = sig;
-    pet.innerHTML = C.charHTML(S.settings.character, S.settings.customChar) + '<span class="rec-badge">● 녹음</span><span class="count" hidden></span>'
-      + `<span class="talk" role="button" aria-label="비서와 이야기하기" title="비서와 이야기하기 (날씨·부탁·녹음)">${ico('chat', 15)}</span>`;
-  }
-  pet.classList.toggle('recording', !!rec);
-  pet.setAttribute('aria-label', C.charName(S) + ' (AI 비서)');
-  renderPetBadges();
-  setMood(mood);
-}
-function renderPetBadges() {
-  const c = $('#pet .count'); if (!c) return;
-  const n = upcomingCount();
-  c.hidden = !n || !petMode(); c.textContent = n;
-}
-function petXY() {
-  const p = S.settings.petPos, size = 92;
-  if (p) return { x: clamp(p.x * W(), 0, W() - size), y: clamp(p.y * H(), 0, H() - size) };
-  return { x: S.settings.side === 'left' ? 18 : W() - size - 18, y: H() - size - 28 };
-}
-function placePet() {
-  const pet = $('#pet'), { x, y } = petXY();
-  pet.style.left = x + 'px'; pet.style.top = y + 'px';
-  if (bubble.open) placeBubble();
-}
-function bindPet() {
-  const pet = $('#pet');
-  pet.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const sx = e.clientX, sy = e.clientY, o = petXY(); let moved = false; const onTalk = !!e.target.closest('.talk');
-    pet.setPointerCapture(e.pointerId); dragging = true;
-    const mv = (ev) => {
-      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return;
-      moved = true;
-      const x = clamp(o.x + ev.clientX - sx, 0, W() - 92), y = clamp(o.y + ev.clientY - sy, 0, H() - 92);
-      pet.style.left = x + 'px'; pet.style.top = y + 'px';
-      S.settings.petPos = { x: x / W(), y: y / H() };
-      if (bubble.open) placeBubble();
-    };
-    const up = () => {
-      dragging = false;
-      pet.removeEventListener('pointermove', mv); pet.removeEventListener('pointerup', up); pet.removeEventListener('pointercancel', up);
-      if (moved) save(); else if (onTalk) toggleMenu(); else onPetClick();
-    };
-    pet.addEventListener('pointermove', mv); pet.addEventListener('pointerup', up); pet.addEventListener('pointercancel', up);
-  });
-  pet.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPetClick(); } });
-  pet.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleMenu(); });
-  bindImageDrop(pet, () => (openId ? byId(openId) : null));
-}
-/** 캐릭터를 누르면 책갈피가 펼쳐지고, 한 번 더 누르면 접힌다. */
-function onPetClick() {
+function toggleDock() {
   if (rec && rec.kind === 'command') { stopRecording(); return; }
   const shown = !$('#stage').classList.contains('dock-hidden');
   if (shown) {
@@ -1100,14 +1058,16 @@ function onPetClick() {
   } else { dockFolded = false; summoned = petMode(); }
   applyMode(); renderTabs(); setMood('talk', 700);
 }
-function toggleMenu() { if (bubble.open && bubble.menu) closeBubble(); else { openMenu(); api.focus(); } }
+function toggleMenu() {
+  if (rec?.kind === 'command') { stopRecording(); return; }
+  if (bubble.open && bubble.menu) closeBubble(); else { openMenu(); api.focus(); }
+}
 
 /* 말풍선 */
 function placeBubble() {
-  const b = $('#bubble'), p = petXY(), bw = 300, bh = b.offsetHeight || 160;
-  let x = p.x + 46 - bw / 2; x = clamp(x, 8, W() - bw - 8);
-  if (S.settings.side === 'right' && p.x > W() - 240) x = clamp(p.x - bw + 70, 8, W() - bw - 8);
-  let y = p.y - bh - 12; if (y < 8) y = p.y + 100;
+  const b = $('#bubble'), bw = b.offsetWidth || 300, bh = b.offsetHeight || 160;
+  const x = S.settings.side === 'left' ? 18 : Math.max(8, W() - bw - 18);
+  const y = Math.max(8, H() - bh - 28);
   b.style.left = x + 'px'; b.style.top = y + 'px';
 }
 function say(msg, { ttl = 6000, menu, actions = [] } = {}) {
@@ -1152,7 +1112,7 @@ function handleEdge(c) {
   if (!S.settings.peek || openId || agendaOpen || modalOpen || (bubble.open && bubble.menu) || dragging) { clearTimeout(edgeT); edgeSide = null; return; }
   if (c.edge && !peek.open) {
     const el = document.elementFromPoint(c.edge === 'left' ? 1 : W() - 2, c.y);
-    if (el && el.closest('.tab,.pet,.sheet')) return;
+    if (el && el.closest('.tab,.sheet')) return;
     if (edgeSide !== c.edge) {
       edgeSide = c.edge; clearTimeout(edgeT);
       edgeT = setTimeout(() => { if (cursor.edge === edgeSide) openPeek(edgeSide, cursor.y); }, +S.settings.peekDelay || 350);
@@ -1320,7 +1280,7 @@ async function openSettings() {
     h('div', { class: 'row' }, h('label', { style: 'min-width:72px' }, '흰 테두리'),
       h('div', { class: 'seg', role: 'group' }, [[true, '켜기'], [false, '끄기']].map(([v, l]) => h('button', { type: 'button', 'aria-pressed': String(maker.outline === v), onclick: () => { maker.outline = v; remake(); } }, l)))),
     h('div', { class: 'row' },
-      h('button', { class: 'btn primary', type: 'button', disabled: maker.busy || !maker.result, onclick: () => { st.customChar = maker.result; st.character = 'custom'; maker = null; petChar = ''; save(); renderPet(); if (openId) renderCard(byId(openId)); render(); toast({ title: '새 캐릭터가 준비됐어요', ttl: 2500 }); } }, '이 캐릭터로 정하기'),
+      h('button', { class: 'btn primary', type: 'button', disabled: maker.busy || !maker.result, onclick: () => { st.customChar = maker.result; st.character = 'custom'; maker = null; save(); if (openId) renderCard(byId(openId)); render(); toast({ title: '새 캐릭터가 준비됐어요', ttl: 2500 }); } }, '이 캐릭터로 정하기'),
       h('button', { class: 'btn', type: 'button', onclick: () => { maker = null; render(); } }, '취소')));
   const armedDel = {};
   const secManager = () => h('div', { class: 'secman' },
@@ -1343,7 +1303,7 @@ async function openSettings() {
       h('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, h('h3', {}, '설정'), h('button', { class: 'btn icon', type: 'button', 'aria-label': '닫기', onclick: closeSettings, html: ico('x', 16) })),
       h('h4', {}, 'AI 비서 캐릭터'),
       h('div', { class: 'chars' },
-        C.ORDER.map((id) => h('button', { type: 'button', 'aria-pressed': String(st.character === id), onclick: () => { st.character = id; save(); renderPet(); if (openId) renderCard(byId(openId)); render(); } },
+        C.ORDER.map((id) => h('button', { type: 'button', 'aria-pressed': String(st.character === id), onclick: () => { st.character = id; save(); if (openId) renderCard(byId(openId)); render(); } },
           h('span', { class: 'cv', html: C.charHTML(id) }), C.CHARS[id].name)),
         filePicker({ cls: 'charpick' + (st.character === 'custom' ? ' on' : ''), label: '내 이미지로 캐릭터 만들기', multiple: false, onFiles: pickChar },
           h('span', { class: 'cv', html: st.customChar ? C.charHTML('custom', st.customChar) : ico('image', 26) }), st.customChar ? '내 사진 바꾸기' : '내 사진으로')),
@@ -1354,7 +1314,7 @@ async function openSettings() {
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '책갈피 위치'), seg('side', [['left', '왼쪽'], ['right', '오른쪽']], applySide)),
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '표시 방식'), seg('modeOverride', [['auto', '자동'], ['desktop', '항상 책갈피'], ['pet', '항상 캐릭터만']], () => { api.applySettings({ modeOverride: st.modeOverride }); applyMode(); })),
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '캐릭터만 남길 때'), seg('petTarget', [['all', '바탕화면이 아니면 항상'], ['browser', '웹 브라우저를 쓸 때만']], applyMode)),
-      h('p', { class: 'note' }, '자동: 바탕화면이 보이면 책갈피가 펼쳐지고, 다른 앱이나 웹을 쓰는 동안에는 캐릭터만 남아요. 캐릭터를 누르면 그 화면에서 책갈피가 나와요.'),
+      h('p', { class: 'note' }, '자동: 바탕화면에서는 책갈피가 펼쳐지고, 다른 앱을 쓰는 동안에는 접혀요. 움직이는 펫을 우클릭하면 메모가 열려요.'),
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '가장자리 미리보기'), seg('peek', [[true, '켜기'], [false, '끄기']]), seg('peekDelay', [[200, '빠르게'], [350, '보통'], [600, '천천히']])),
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '모아보기 위젯'), seg('showWidget', [[true, '화면 위에 보이기'], [false, '숨기기']], renderWidget)),
       api.petVisible ? h('div', { class: 'row' }, h('label', {}, '움직이는 데스크톱 펫'),
@@ -1527,6 +1487,7 @@ function renderBoard() {
       h('header', { class: 'overview-row' },
         avatar,
         h('h2', {}, C.charName(S)),
+        h('button', { class: 'overview-icon', type: 'button', 'aria-label': 'AI 비서', onclick: toggleMenu }, iel('chat', 17)),
         h('button', { class: 'overview-icon', type: 'button', 'aria-label': '설정', onclick: openSettings }, iel('gear', 18)),
         h('button', { class: 'overview-icon overview-close', type: 'button', 'aria-label': '위젯 접기', onclick: closeBoard }, iel('x', 18))),
       h('div', { class: 'overview-brief' }, h('b', {}, '오늘 브리핑'), h('p', {}, briefing())),
@@ -1571,7 +1532,7 @@ function renderBoard() {
 function applySide() {
   const left = S.settings.side === 'left';
   $('#stage').classList.toggle('side-left', left); $('#stage').classList.toggle('side-right', !left);
-  placePet();
+  if (bubble.open) placeBubble();
 }
 function seed() {
   const mk = (theme, sectionId, text, x = {}) => {
@@ -1611,9 +1572,10 @@ function bindGlobal() {
     const wasPet = petMode();
     if (f.kind !== 'app') dockFolded = false;
     ctx = f.kind === 'app' ? 'app' : 'desktop'; fgBrowser = !!f.browser;
-    // 사용자가 다른 앱을 누르면 펼쳐 둔 것을 정리해서 접는다 (녹음은 계속된다)
-    if ((openId || agendaOpen || summoned || (bubble.open && bubble.menu)) && !modalOpen) closeAll();
-    if (wasPet !== petMode()) applyMode(); else renderPetBadges();
+    // 펫에서 연 메모는 다른 앱을 보면서도 계속 편집할 수 있다.
+    const petMemoOpen = openId && $('#sheet').classList.contains('from-pet');
+    if (!petMemoOpen && (openId || agendaOpen || summoned || (bubble.open && bubble.menu)) && !modalOpen) closeAll();
+    if (wasPet !== petMode()) applyMode();
   });
   // 사진 파일을 화면 어디에 놓아도 메모에 들어간다 (열린 메모가 없으면 새 메모)
   let dragN = 0;
@@ -1629,19 +1591,21 @@ function bindGlobal() {
     if ([...document.querySelectorAll('.dropping')].length) return;
     const all = e.dataTransfer?.files || [], fs = imageFiles(all);
     if (!fs.length) { if (all.length) toast({ title: '사진 파일만 넣을 수 있어요', ttl: 3000 }); return; }
-    if (e.target.closest && e.target.closest('.card,.pet,.tab,.overview-item,.bgroup')) return; // 각자 처리
+    if (e.target.closest && e.target.closest('.card,.tab,.overview-item,.bgroup')) return; // 각자 처리
     if (modalKind === 'board') closeBoard();
     let n = openId ? byId(openId) : null;
     if (!n) n = newNote(false);
     await addPhotos(n, fs);
     if (openId !== n.id) openNote(n.id);
   });
-  api.onDisplay(() => { fit(); placePet(); });
+  api.onDisplay(() => { fit(); if (bubble.open) placeBubble(); });
   api.onOpenNote((id) => { if (id && byId(id)) openNote(id); });
   api.onCommand((cmd) => {
-    if (cmd === 'summon') onPetClick();
+    if (cmd === 'summon') toggleDock();
     else if (cmd === 'board') openBoard();
     else if (cmd === 'new') newNote();
+    else if (cmd === 'pet-memo') openPetMemo();
+    else if (cmd === 'assistant') toggleMenu();
     else if (cmd === 'record') quickRecord();
     else if (cmd === 'agenda') toggleAgenda();
     else if (cmd === 'settings') openSettings();
@@ -1654,8 +1618,7 @@ function bindGlobal() {
     if (addingSec) { addingSec = false; renderTabs(); return; }
     if (openId || agendaOpen || bubble.open || summoned) closeAll();
   });
-  addEventListener('resize', () => { fit(); placePet(); });
-  bindPet();
+  addEventListener('resize', () => { fit(); if (bubble.open) placeBubble(); });
 }
 
 async function boot() {
@@ -1669,13 +1632,13 @@ async function boot() {
   keys = await api.keyStatus().catch(() => keys);
   api.applySettings({ launchAtLogin: S.settings.launchAtLogin, modeOverride: S.settings.modeOverride });
   bindGlobal();
-  applySide(); renderTabs(); renderPet(); fit(); applyMode();
+  applySide(); renderTabs(); fit(); applyMode();
   if (info.args?.includes('--overview')) openBoard();
   save();
   tick(); setInterval(tick, 5000);
-  if (!loaded) setTimeout(() => say(`안녕하세요, ${C.charName(S)}예요! 저를 누르면 책갈피가 펼쳐지고 접혀요. 말풍선 버튼을 누르면 날씨나 부탁을 말할 수 있어요. 화면 위의 '메모 모아보기'로 모든 메모를 한눈에 볼 수 있어요.`, { ttl: 14000 }), 800);
+  if (!loaded) setTimeout(() => say(`안녕하세요, ${C.charName(S)}예요! '메모 모아보기'에서 메모를 확인하거나 AI 비서에게 날씨나 부탁을 물어보세요.`, { ttl: 14000 }), 800);
   // 디버그/스크린샷용 훅
-  window.__mk = { S: () => S, openNote, newNote, onPetClick, openPeek, openSettings, toggleAgenda, say, closeAll, askAssistant, setMood, applyMode, openBoard, closeBoard, toggleSection, toggleMenu, setCtx: (c) => { ctx = c; applyMode(); } };
+  window.__mk = { S: () => S, openNote, newNote, toggleDock, openPeek, openSettings, toggleAgenda, say, closeAll, askAssistant, setMood, applyMode, openBoard, closeBoard, toggleSection, toggleMenu, setCtx: (c) => { ctx = c; applyMode(); } };
 }
 boot();
 })();

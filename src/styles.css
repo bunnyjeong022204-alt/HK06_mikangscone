@@ -11,7 +11,7 @@ html,body{height:100%;margin:0;background:transparent}
 body{font-family:var(--f-ui);color:var(--ink);overflow:hidden;user-select:none}
 input,textarea{user-select:text}
 button{font:inherit;color:inherit;cursor:pointer}
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.pet:focus-visible{outline:3px solid var(--cherry);outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--cherry);outline-offset:2px}
 svg{display:block}
 [hidden]{display:none!important}
 
@@ -92,7 +92,7 @@ svg{display:block}
 .viewer .vcount{font-size:13px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
 .pcard .pph{display:flex;gap:6px;margin-top:10px}
 .pcard .pph img{width:58px;height:58px;object-fit:cover;border-radius:4px;background:#fff;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
-.pet.dropping,.tab.dropping{outline:3px dashed var(--cherry);outline-offset:4px;border-radius:50%}
+.tab.dropping{outline:3px dashed var(--cherry);outline-offset:4px;border-radius:50%}
 .tab.dropping{border-radius:16px}
 .au{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 4px;border-radius:99px;background:#fff;border:1px solid var(--line);font-size:12px}
 .au button{border:0;background:transparent;padding:2px;display:grid;place-items:center;border-radius:50%;color:var(--ink-soft)}
@@ -180,11 +180,6 @@ svg{display:block}
 .afoot{display:flex;gap:6px;padding-top:10px;flex-wrap:wrap}
 
 /* ───── 캐릭터(펫) ───── */
-.pet{position:absolute;z-index:40;width:92px;height:92px;cursor:pointer;touch-action:none;transition:opacity .3s,transform .3s}
-.pet.hide{opacity:0;pointer-events:none;transform:scale(.6)}
-.pet .rec-badge{position:absolute;top:2px;right:2px;display:none;align-items:center;gap:3px;padding:1px 6px;border-radius:99px;background:#d93a35;color:#fff;font-size:10.5px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
-.pet.recording .rec-badge{display:flex}
-.pet .count{position:absolute;bottom:4px;right:0;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#3a3430;color:#fff;font-size:11px;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.2)}
 .c-svg{width:100%;height:100%;overflow:visible}
 .c-custom{position:relative;width:100%;height:100%}
 .c-custom img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,.2))}
@@ -323,8 +318,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 .secsw .sw{width:20px;height:20px}
 
 /* ───── 캐릭터 말풍선 버튼 ───── */
-.pet .talk{position:absolute;top:-4px;left:-6px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#fffdf8;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.2);opacity:.75;transition:opacity .2s,transform .2s;cursor:pointer}
-.pet:hover .talk,.pet:focus-visible .talk{opacity:1;transform:scale(1.08)}
 
 /* ───── 메모 모아보기 위젯 (화면 위 고정) ───── */
 .widget{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:46}
