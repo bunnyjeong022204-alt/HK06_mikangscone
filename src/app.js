@@ -300,19 +300,18 @@ function newNote(focus = true, sectionId) {
 }
 
 function togglePetBookmarks() {
-  const closing = !$('#stage').classList.contains('dock-hidden') || modalOpen;
+  const closing = !$('#stage').classList.contains('dock-hidden') || modalOpen || peek.open || (bubble.open && bubble.menu);
+  dismissPeek();
   if (modalKind === 'board') closeBoard();
   else if (viewerKeys) closeViewer();
   else if (modalOpen) closeSettings();
   if (closing) {
     dockFolded = true;
-    closePeek(true);
     closeAll();
     return;
   }
   summoned = true;
   dockFolded = false;
-  closePeek(true);
   closeBubble();
   applyMode();
   api.focus();
@@ -1166,13 +1165,15 @@ function openPeek(side, y) {
   peek.list = recentNotes(); peek.idx = 0; peek.side = side; peek.open = true;
   const el = $('#peek');
   el.className = 'peek ' + side;
+  el.hidden = false;
   el.style.top = clamp(y - 150, 50, H() - 380) + 'px';
   renderPeek();
-  requestAnimationFrame(() => { el.classList.add('open'); updateHit(); });
+  requestAnimationFrame(() => { if (peek.open) { el.classList.add('open'); updateHit(); } });
 }
 function renderPeek() {
   const el = $('#peek'), n = peek.list[peek.idx];
-  const charBox = h('div', { class: 'pc', html: C.charHTML(S.settings.character, S.settings.customChar) });
+  const charBox = h('div', { class: 'pc', title: '우클릭으로 미리보기 닫기',
+    html: C.charHTML(S.settings.character, S.settings.customChar), oncontextmenu: (e) => { e.preventDefault(); dismissPeek(); } });
   if (!n) {
     el.replaceChildren(h('div', { class: 'pcard' }, charBox, h('div', { class: 'pk' }, '메모가 없어요'), h('div', { class: 'pt' }, '저를 눌러서 첫 메모를 적어보세요.')));
     return;
@@ -1192,8 +1193,19 @@ function renderPeek() {
 function closePeek(now) {
   clearTimeout(peek.hideT); peek.hideT = 0;
   if (!peek.open) return;
-  const go = () => { peek.hideT = 0; peek.open = false; $('#peek').classList.remove('open'); updateHit(); };
+  const go = () => {
+    peek.hideT = 0; peek.open = false;
+    const el = $('#peek');
+    el.classList.remove('open');
+    if (now) el.hidden = true;
+    updateHit();
+  };
   if (now) go(); else peek.hideT = setTimeout(go, 220);
+}
+function dismissPeek() {
+  clearTimeout(edgeT);
+  edgeSide = cursor.edge;
+  closePeek(true);
 }
 // 마우스가 메모 미리보기와 가장자리를 벗어나면 다시 사라진다
 function handlePeekLeave(c) {
