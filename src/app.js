@@ -1,7 +1,8 @@
 (() => {
 'use strict';
 const P = window.MemoParse, C = window.Chars, api = window.api;
-const { DAYMS, WD, pad, startOfDay, fmtTime, fmtWhen, fmtIn, fmtDate } = P;
+const { DAYMS, WD, pad, startOfDay, addDays, fmtTime, fmtWhen, fmtIn, fmtDate } = P;
+const upcomingTime = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true });
 
 /* ─────────── 도우미 ─────────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -283,7 +284,7 @@ function openNote(id) {
 function toggleAgenda() {
   if (modalKind !== 'board') openBoard();
   $('#overview-schedule')?.scrollIntoView({ block: 'nearest' });
-  $('#overview-date')?.focus({ preventScroll: true });
+  $('.upcoming-day[aria-pressed="true"]')?.focus({ preventScroll: true });
 }
 function blankNote(sectionId) {
   const idx = ((S.nextTheme || 0) + 1) % THEMES.length; S.nextTheme = idx;
@@ -1552,10 +1553,31 @@ function refreshOverviewAction() {
 
 function overviewSchedule() {
   const date = overviewDay;
+  const today = startOfDay(new Date());
+  const todayCount = todayEvents().length;
   const dateKey = P.isoLocal(date).slice(0, 10);
-  const events = S.notes.flatMap((n) => n.events
-    .filter((e) => startOfDay(new Date(e.at)).getTime() === date.getTime())
-    .map((e) => ({ n, e }))).sort((a, b) => a.e.at - b.e.at);
+  const monday = addDays(date, -((date.getDay() + 6) % 7));
+  const allEvents = S.notes.flatMap((n) => n.events.map((e) => ({ n, e })));
+  const events = allEvents.filter(({ e }) => startOfDay(new Date(e.at)).getTime() === date.getTime())
+    .sort((a, b) => a.e.at - b.e.at);
+  const active = events.filter(({ e }) => !e.done);
+  const markedDays = new Set(allEvents.filter(({ e }) => !e.done).map(({ e }) => startOfDay(new Date(e.at)).getTime()));
+  const days = Array.from({ length: 7 }, (_, offset) => {
+    const day = addDays(monday, offset);
+    const marked = markedDays.has(day.getTime());
+    return h('button', {
+      class: 'upcoming-day', type: 'button', 'aria-pressed': String(day.getTime() === date.getTime()),
+      'aria-current': day.getTime() === today.getTime() ? 'date' : null,
+      'aria-label': `${fmtDate(day)}${marked ? ', 일정 있음' : ''}`,
+      onclick: () => {
+        overviewDay = day;
+        refreshAgenda();
+        $('.upcoming-day[aria-pressed="true"]')?.focus({ preventScroll: true });
+      },
+    }, h('small', {}, WD[day.getDay()]), h('strong', {}, day.getDate()),
+    h('span', { class: marked ? 'upcoming-dot' : 'upcoming-dot empty-dot', 'aria-hidden': 'true' }));
+  });
+  const manageOpen = $('.upcoming-manage')?.open === true;
   const input = h('input', { id: 'overview-date', type: 'date', value: dateKey, 'aria-label': '일정 날짜',
     onchange: () => {
       if (!input.value) return;
@@ -1564,16 +1586,26 @@ function overviewSchedule() {
       $('#overview-date')?.focus({ preventScroll: true });
     },
   });
-  return h('section', { class: 'overview-card', id: 'overview-schedule', 'aria-label': '일정' },
-    h('header', { class: 'overview-row' }, h('h2', {}, '일정'),
-      h('button', { class: 'overview-link', type: 'button', onclick: () => { overviewDay = startOfDay(new Date()); refreshAgenda(); $('#overview-date')?.focus({ preventScroll: true }); } }, '오늘')),
-    h('div', { class: 'overview-row overview-calendar' },
-      h('strong', {}, `${date.getMonth() + 1}월 ${date.getDate()}일 ${WD[date.getDay()]}요일`), input),
-    events.length ? h('div', { class: 'overview-schedule-list' }, events.map(({ n, e }) => scheduleRow(n, e)))
+  return h('section', { class: 'overview-card upcoming-card', id: 'overview-schedule', 'aria-label': '일정' },
+    h('header', { class: 'overview-row upcoming-head' }, h('h2', {}, 'Upcoming'), h('span', {}, `오늘 일정 ${todayCount}개`)),
+    h('div', { class: 'upcoming-week', role: 'group', 'aria-label': `${fmtDate(monday)}부터 일주일` }, days),
+    active.length ? h('ul', { class: 'upcoming-events' }, active.map(({ n, e }) =>
+      h('li', {}, h('button', { type: 'button', onclick: () => openNote(n.id) },
+        h('span', { class: 'upcoming-event-dot', 'aria-hidden': 'true' }),
+        h('span', { class: 'upcoming-event-title' }, e.title),
+        h('time', { datetime: P.isoLocal(new Date(e.at)) }, e.allDay ? '종일' : upcomingTime.format(e.at))))))
       : h('p', { class: 'overview-muted' }, '등록된 일정이 없어요.'),
-    h('div', { class: 'overview-schedule-actions' },
-      h('button', { class: 'overview-link', type: 'button', onclick: rescan }, '메모에서 일정 찾기'),
-      h('button', { class: 'overview-link', type: 'button', onclick: demoAlarm }, '알람 체험')));
+    h('details', { class: 'upcoming-manage', open: manageOpen }, h('summary', {}, '일정 관리'),
+      h('div', { class: 'overview-row overview-calendar' }, input,
+        h('button', { class: 'overview-link', type: 'button', onclick: () => {
+          overviewDay = startOfDay(new Date());
+          refreshAgenda();
+          $('.upcoming-day[aria-current="date"]')?.focus({ preventScroll: true });
+        } }, '오늘')),
+      h('div', { class: 'overview-schedule-list' }, events.map(({ n, e }) => scheduleRow(n, e))),
+      h('div', { class: 'overview-schedule-actions' },
+        h('button', { class: 'overview-link', type: 'button', onclick: rescan }, '메모에서 일정 찾기'),
+        h('button', { class: 'overview-link', type: 'button', onclick: demoAlarm }, '알람 체험'))));
 }
 
 async function refreshPetControls(action, value) {

@@ -20,7 +20,7 @@ export interface SpeciesAnimationDef {
   fps: number;
   loop: boolean;
   /** Optional motion applied to a single illustration without changing the asset. */
-  motion?: 'breathe' | 'waddle' | 'sway' | 'sleep' | 'bounce';
+  motion?: 'breathe' | 'waddle' | 'sway' | 'sleep' | 'bounce' | 'wriggle';
   effect?: 'rest' | 'sleep' | 'happy' | 'held';
   bottomInset?: number;
   pixelArt?: boolean;

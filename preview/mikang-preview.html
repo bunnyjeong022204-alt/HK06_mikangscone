@@ -572,8 +572,59 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 }
 .overview-pet small { color: var(--mikkang-muted); }
 .overview-calendar { margin: 10px 0 6px; }
-.overview-calendar strong { font-size: 13px; }
 .overview-schedule-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+
+.upcoming-card {
+  --upcoming-accent: #cbef57;
+  --upcoming-day-bg: #eff1ed;
+  border-radius: 24px;
+  color: #21251e;
+  background: #fff;
+}
+.upcoming-card .upcoming-head h2 { font: 400 29px/1 'Jua', var(--f-display); }
+.upcoming-head > span { color: #565a52; font-size: 11px; font-weight: 700; }
+.upcoming-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin-top: 12px; }
+.upcoming-day {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 51px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 99px;
+  background: var(--upcoming-day-bg);
+  font-family: 'Jua', var(--f-ui);
+  line-height: 1;
+}
+.upcoming-day small { color: #51564c; font-size: 11px; }
+.upcoming-day strong { font-size: 16px; font-weight: 400; }
+.upcoming-day[aria-pressed="true"] { background: var(--upcoming-accent); box-shadow: 0 3px 6px #26312824; }
+.upcoming-day[aria-pressed="true"] small { color: inherit; }
+.upcoming-dot { width: 4px; height: 4px; border-radius: 50%; background: #88a732; }
+.upcoming-day[aria-pressed="true"] .upcoming-dot { background: #283018; }
+.upcoming-dot.empty-dot { visibility: hidden; }
+.upcoming-events { margin: 8px 0 0; padding: 0; list-style: none; }
+.upcoming-events button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 31px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+}
+.upcoming-event-dot { width: 10px; height: 10px; border: 2px solid #aacf41; border-radius: 50%; }
+.upcoming-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upcoming-events time { color: #565a52; }
+.upcoming-manage { margin-top: 8px; color: var(--mikkang-muted); font-size: 11px; }
+.upcoming-manage > summary { width: max-content; cursor: pointer; }
 
 .overview-row {
   display: flex;
@@ -1447,7 +1498,8 @@ body{overflow:hidden}
 <script>(() => {
 'use strict';
 const P = window.MemoParse, C = window.Chars, api = window.api;
-const { DAYMS, WD, pad, startOfDay, fmtTime, fmtWhen, fmtIn, fmtDate } = P;
+const { DAYMS, WD, pad, startOfDay, addDays, fmtTime, fmtWhen, fmtIn, fmtDate } = P;
+const upcomingTime = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true });
 
 /* ─────────── 도우미 ─────────── */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1729,7 +1781,7 @@ function openNote(id) {
 function toggleAgenda() {
   if (modalKind !== 'board') openBoard();
   $('#overview-schedule')?.scrollIntoView({ block: 'nearest' });
-  $('#overview-date')?.focus({ preventScroll: true });
+  $('.upcoming-day[aria-pressed="true"]')?.focus({ preventScroll: true });
 }
 function blankNote(sectionId) {
   const idx = ((S.nextTheme || 0) + 1) % THEMES.length; S.nextTheme = idx;
@@ -2998,10 +3050,31 @@ function refreshOverviewAction() {
 
 function overviewSchedule() {
   const date = overviewDay;
+  const today = startOfDay(new Date());
+  const todayCount = todayEvents().length;
   const dateKey = P.isoLocal(date).slice(0, 10);
-  const events = S.notes.flatMap((n) => n.events
-    .filter((e) => startOfDay(new Date(e.at)).getTime() === date.getTime())
-    .map((e) => ({ n, e }))).sort((a, b) => a.e.at - b.e.at);
+  const monday = addDays(date, -((date.getDay() + 6) % 7));
+  const allEvents = S.notes.flatMap((n) => n.events.map((e) => ({ n, e })));
+  const events = allEvents.filter(({ e }) => startOfDay(new Date(e.at)).getTime() === date.getTime())
+    .sort((a, b) => a.e.at - b.e.at);
+  const active = events.filter(({ e }) => !e.done);
+  const markedDays = new Set(allEvents.filter(({ e }) => !e.done).map(({ e }) => startOfDay(new Date(e.at)).getTime()));
+  const days = Array.from({ length: 7 }, (_, offset) => {
+    const day = addDays(monday, offset);
+    const marked = markedDays.has(day.getTime());
+    return h('button', {
+      class: 'upcoming-day', type: 'button', 'aria-pressed': String(day.getTime() === date.getTime()),
+      'aria-current': day.getTime() === today.getTime() ? 'date' : null,
+      'aria-label': `${fmtDate(day)}${marked ? ', 일정 있음' : ''}`,
+      onclick: () => {
+        overviewDay = day;
+        refreshAgenda();
+        $('.upcoming-day[aria-pressed="true"]')?.focus({ preventScroll: true });
+      },
+    }, h('small', {}, WD[day.getDay()]), h('strong', {}, day.getDate()),
+    h('span', { class: marked ? 'upcoming-dot' : 'upcoming-dot empty-dot', 'aria-hidden': 'true' }));
+  });
+  const manageOpen = $('.upcoming-manage')?.open === true;
   const input = h('input', { id: 'overview-date', type: 'date', value: dateKey, 'aria-label': '일정 날짜',
     onchange: () => {
       if (!input.value) return;
@@ -3010,16 +3083,26 @@ function overviewSchedule() {
       $('#overview-date')?.focus({ preventScroll: true });
     },
   });
-  return h('section', { class: 'overview-card', id: 'overview-schedule', 'aria-label': '일정' },
-    h('header', { class: 'overview-row' }, h('h2', {}, '일정'),
-      h('button', { class: 'overview-link', type: 'button', onclick: () => { overviewDay = startOfDay(new Date()); refreshAgenda(); $('#overview-date')?.focus({ preventScroll: true }); } }, '오늘')),
-    h('div', { class: 'overview-row overview-calendar' },
-      h('strong', {}, `${date.getMonth() + 1}월 ${date.getDate()}일 ${WD[date.getDay()]}요일`), input),
-    events.length ? h('div', { class: 'overview-schedule-list' }, events.map(({ n, e }) => scheduleRow(n, e)))
+  return h('section', { class: 'overview-card upcoming-card', id: 'overview-schedule', 'aria-label': '일정' },
+    h('header', { class: 'overview-row upcoming-head' }, h('h2', {}, 'Upcoming'), h('span', {}, `오늘 일정 ${todayCount}개`)),
+    h('div', { class: 'upcoming-week', role: 'group', 'aria-label': `${fmtDate(monday)}부터 일주일` }, days),
+    active.length ? h('ul', { class: 'upcoming-events' }, active.map(({ n, e }) =>
+      h('li', {}, h('button', { type: 'button', onclick: () => openNote(n.id) },
+        h('span', { class: 'upcoming-event-dot', 'aria-hidden': 'true' }),
+        h('span', { class: 'upcoming-event-title' }, e.title),
+        h('time', { datetime: P.isoLocal(new Date(e.at)) }, e.allDay ? '종일' : upcomingTime.format(e.at))))))
       : h('p', { class: 'overview-muted' }, '등록된 일정이 없어요.'),
-    h('div', { class: 'overview-schedule-actions' },
-      h('button', { class: 'overview-link', type: 'button', onclick: rescan }, '메모에서 일정 찾기'),
-      h('button', { class: 'overview-link', type: 'button', onclick: demoAlarm }, '알람 체험')));
+    h('details', { class: 'upcoming-manage', open: manageOpen }, h('summary', {}, '일정 관리'),
+      h('div', { class: 'overview-row overview-calendar' }, input,
+        h('button', { class: 'overview-link', type: 'button', onclick: () => {
+          overviewDay = startOfDay(new Date());
+          refreshAgenda();
+          $('.upcoming-day[aria-current="date"]')?.focus({ preventScroll: true });
+        } }, '오늘')),
+      h('div', { class: 'overview-schedule-list' }, events.map(({ n, e }) => scheduleRow(n, e))),
+      h('div', { class: 'overview-schedule-actions' },
+        h('button', { class: 'overview-link', type: 'button', onclick: rescan }, '메모에서 일정 찾기'),
+        h('button', { class: 'overview-link', type: 'button', onclick: demoAlarm }, '알람 체험'))));
 }
 
 async function refreshPetControls(action, value) {

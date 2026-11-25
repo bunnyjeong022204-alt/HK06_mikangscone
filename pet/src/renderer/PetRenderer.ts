@@ -7,6 +7,7 @@ import type { FishingPose } from './FishingRig';
 export class PetRenderer {
   private ctx: CanvasRenderingContext2D;
   private imageCache = new Map<string, HTMLImageElement>();
+  private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   constructor(private canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -130,7 +131,8 @@ export class PetRenderer {
     const image = this.getImage(def.sheet);
     if (!image.complete || image.naturalWidth === 0) return;
 
-    if (grip && !def.authoredGrip) {
+    const wriggle = def.motion === 'wriggle' && !this.reducedMotion.matches;
+    if (grip && (wriggle || !def.authoredGrip)) {
       const box = def.pixelArt ? this.getPaintBounds(def, frame, position, scale) : {
         x: position.x, y: position.y, width: frame.sw * scale, height: frame.sh * scale,
       };
@@ -138,11 +140,18 @@ export class PetRenderer {
       this.ctx.save();
       this.ctx.imageSmoothingEnabled = !def.pixelArt;
       this.ctx.translate(position.x + grip.x, position.y + grip.y);
+      const x = box.x - position.x - grip.x;
+      const y = box.y - position.y - grip.y;
+      if (wriggle) {
+        const seconds = performance.now() / 1000;
+        this.ctx.rotate(Math.sin(seconds * 18) * 0.13 + Math.sin(seconds * 11) * 0.035);
+        this.ctx.drawImage(image, frame.sx, frame.sy, frame.sw, frame.sh, x, y, box.width, box.height);
+        this.ctx.restore();
+        return;
+      }
       this.ctx.rotate(beat * 0.09);
       const split = Math.floor(frame.sh * 0.62);
       const upperHeight = box.height * split / frame.sh;
-      const x = box.x - position.x - grip.x;
-      const y = box.y - position.y - grip.y;
       if (split > 0) {
         this.ctx.drawImage(image, frame.sx, frame.sy, frame.sw, split, x, y, box.width, upperHeight);
       }

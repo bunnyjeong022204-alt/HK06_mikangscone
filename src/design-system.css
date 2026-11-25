@@ -253,8 +253,59 @@
 }
 .overview-pet small { color: var(--mikkang-muted); }
 .overview-calendar { margin: 10px 0 6px; }
-.overview-calendar strong { font-size: 13px; }
 .overview-schedule-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+
+.upcoming-card {
+  --upcoming-accent: #cbef57;
+  --upcoming-day-bg: #eff1ed;
+  border-radius: 24px;
+  color: #21251e;
+  background: #fff;
+}
+.upcoming-card .upcoming-head h2 { font: 400 29px/1 'Jua', var(--f-display); }
+.upcoming-head > span { color: #565a52; font-size: 11px; font-weight: 700; }
+.upcoming-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin-top: 12px; }
+.upcoming-day {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 51px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 99px;
+  background: var(--upcoming-day-bg);
+  font-family: 'Jua', var(--f-ui);
+  line-height: 1;
+}
+.upcoming-day small { color: #51564c; font-size: 11px; }
+.upcoming-day strong { font-size: 16px; font-weight: 400; }
+.upcoming-day[aria-pressed="true"] { background: var(--upcoming-accent); box-shadow: 0 3px 6px #26312824; }
+.upcoming-day[aria-pressed="true"] small { color: inherit; }
+.upcoming-dot { width: 4px; height: 4px; border-radius: 50%; background: #88a732; }
+.upcoming-day[aria-pressed="true"] .upcoming-dot { background: #283018; }
+.upcoming-dot.empty-dot { visibility: hidden; }
+.upcoming-events { margin: 8px 0 0; padding: 0; list-style: none; }
+.upcoming-events button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 31px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+}
+.upcoming-event-dot { width: 10px; height: 10px; border: 2px solid #aacf41; border-radius: 50%; }
+.upcoming-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upcoming-events time { color: #565a52; }
+.upcoming-manage { margin-top: 8px; color: var(--mikkang-muted); font-size: 11px; }
+.upcoming-manage > summary { width: max-content; cursor: pointer; }
 
 .overview-row {
   display: flex;

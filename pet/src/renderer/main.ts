@@ -93,7 +93,7 @@ async function main(): Promise<void> {
   let previous = performance.now();
   let reply: { pet: Companion; text: string; at: number } | null = null;
   let pointer: Vec2 = { x: -1000, y: -1000 };
-  let held: { pet: Companion; pointerId: number; start: Vec2; offset: Vec2; dragging: boolean; samples: PointerSample[] } | null = null;
+  let held: { pet: Companion; pointerId: number; start: Vec2; offset: Vec2; since: number; dragging: boolean; samples: PointerSample[] } | null = null;
   let clickThrough = true;
   let toyEnabled = false;
   let toyNextPlayAt = 0;
@@ -255,6 +255,22 @@ async function main(): Promise<void> {
     const box = pose && frame ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize(pet)) : renderer.getSpriteBounds(def, pos, scale);
     return pointer.x >= box.x && pointer.x <= box.x + box.width && pointer.y >= box.y && pointer.y <= box.y + box.height;
   });
+  function beginDrag(grab: NonNullable<typeof held>) {
+    grab.dragging = true;
+    grab.pet.depthWalkElapsed = undefined;
+    grab.pet.cue = undefined;
+    grab.pet.state.transition('idle');
+    grab.pet.behavior.interruptForDrag();
+    hush(grab.pet);
+    reactWithLine(grab.pet, 'grab', performance.now());
+  }
+  function positionHeld(grab: NonNullable<typeof held>) {
+    const size = petSize(grab.pet);
+    grab.pet.airborne = { position: {
+      x: Math.max(0, Math.min(bounds.width - size, pointer.x - grab.offset.x)),
+      y: Math.max(0, Math.min(bounds.height - size, pointer.y - grab.offset.y)),
+    }, velocity: { x: 0, y: 0 } };
+  }
   function moveHeld(event: PointerEvent) {
     if (!event.isPrimary || (held && held.pointerId !== event.pointerId)) return;
     pointer = { x: event.clientX, y: event.clientY };
@@ -266,21 +282,8 @@ async function main(): Promise<void> {
     const drift = Math.hypot(pointer.x - held.start.x, pointer.y - held.start.y);
     const flickVelocity = !held.dragging && event.type === 'pointerup' && drift >= 3 ? releaseVelocity(held.samples) : undefined;
     const finalFlick = !!flickVelocity && (flickVelocity.x !== 0 || flickVelocity.y !== 0);
-    if (!held.dragging && (drift >= 5 || finalFlick)) {
-      held.dragging = true;
-      held.pet.depthWalkElapsed = undefined;
-      held.pet.cue = undefined;
-      held.pet.state.transition('idle'); held.pet.behavior.interruptForDrag();
-      hush(held.pet);
-      reactWithLine(held.pet, 'grab', performance.now());
-    }
-    if (held.dragging) {
-      const size = petSize(held.pet);
-      held.pet.airborne = { position: {
-        x: Math.max(0, Math.min(bounds.width - size, pointer.x - held.offset.x)),
-        y: Math.max(0, Math.min(bounds.height - size, pointer.y - held.offset.y)),
-      }, velocity: { x: 0, y: 0 } };
-    }
+    if (!held.dragging && (drift >= 5 || finalFlick)) beginDrag(held);
+    if (held.dragging) positionHeld(held);
   }
   canvas.addEventListener('pointermove', moveHeld);
   canvas.addEventListener('pointerdown', (event) => {
@@ -293,7 +296,8 @@ async function main(): Promise<void> {
       pet.airborne = { position: pos, velocity: { x: 0, y: 0 } };
       toyNextPlayAt = performance.now() + 1200;
     }
-    held = { pet, pointerId: event.pointerId, start: { ...pointer }, offset: { x: pointer.x - pos.x, y: pointer.y - pos.y }, dragging: !!pet.airborne, samples: [{ ...pointer, time: event.timeStamp }] };
+    held = { pet, pointerId: event.pointerId, start: { ...pointer }, offset: { x: pointer.x - pos.x, y: pointer.y - pos.y },
+      since: performance.now(), dragging: !!pet.airborne, samples: [{ ...pointer, time: event.timeStamp }] };
     if (pet.airborne) {
       pet.cue = undefined;
       pet.state.transition('idle');
@@ -662,6 +666,10 @@ async function main(): Promise<void> {
       });
     }
     updateToy(now, delta);
+    if (held && !held.dragging && now - held.since >= 200 && held.pet.species.animations.dragged?.motion === 'wriggle') {
+      beginDrag(held);
+      positionHeld(held);
+    }
     if (reply && now >= reply.at) { say(reply.pet, reply.text, now); reply = null; }
     if (pendingSchedule && now >= pendingSchedule.expires) pendingSchedule = null;
     if (pendingSchedule && !petMenu.isOpen && !reply && !document.hidden) {

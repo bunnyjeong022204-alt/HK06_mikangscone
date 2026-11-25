@@ -17,7 +17,7 @@
     },
     "dragged": {
       "sheet": "sprite.png", "frameWidth": 384, "frameHeight": 384,
-      "frameCount": 1, "fps": 2, "loop": true, "authoredGrip": true
+      "frameCount": 1, "fps": 2, "loop": true, "authoredGrip": true, "motion": "wriggle"
     }
   },
   "behavior": {
