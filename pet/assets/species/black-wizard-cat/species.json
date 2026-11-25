@@ -250,6 +250,7 @@
   },
   "behavior": {
     "doubleClick": "chase",
+    "sideWalkInsets": { "left": 37, "right": 38 },
     "walkSpeedPxPerSec": 61,
     "idleMinMs": 1400,
     "idleMaxMs": 3100,

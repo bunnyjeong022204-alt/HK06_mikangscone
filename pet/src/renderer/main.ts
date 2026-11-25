@@ -88,8 +88,12 @@ async function main(): Promise<void> {
     const height = floor * SIDE_WALK_HEIGHT_RATIO;
     const climb = height * progress * progress * (3 - 2 * progress);
     const corner = Math.min(1, climb / 30);
-    const inset = 10 * corner * corner * (3 - 2 * corner);
-    return { x: floorX(walk.side < 0 ? inset : bounds.width - size - inset, size), y: floor - climb };
+    const sideInsets = pet.species.behavior.sideWalkInsets;
+    const margin = (walk.side < 0 ? sideInsets?.left : sideInsets?.right) ?? 0;
+    const right = Math.max(0, bounds.width - size);
+    const offset = right > 0 && !pet.cue
+      ? Math.max(0, margin * pet.species.behavior.spriteScale - 2) * corner * corner * (3 - 2 * corner) : 0;
+    return { x: walk.side < 0 ? -offset : right + offset, y: floor - climb };
   };
   let pets: Companion[] = [];
   let sceneReady = false;

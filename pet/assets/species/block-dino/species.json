@@ -61,6 +61,7 @@
   },
   "behavior": {
     "doubleClick": "fire",
+    "sideWalkInsets": { "left": 64, "right": 64 },
     "fireMouth": { "x": 0.77, "y": 0.63, "frame": 1 },
     "walkSpeedPxPerSec": 45,
     "idleMinMs": 1800,

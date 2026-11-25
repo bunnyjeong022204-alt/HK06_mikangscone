@@ -37,6 +37,8 @@ export interface SpeciesBehaviorDef {
   doubleClick?: 'fire' | 'chase' | 'ink' | 'hearts';
   /** Mouth position in the right-facing frame, with the first open frame index. */
   fireMouth?: { x: number; y: number; frame: number };
+  /** Smallest transparent margin on each side across both edge-walk sheets, in source pixels. */
+  sideWalkInsets?: { left: number; right: number };
   walkSpeedPxPerSec: number;
   idleMinMs: number;
   idleMaxMs: number;
