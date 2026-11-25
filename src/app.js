@@ -171,9 +171,9 @@ const isEmpty = (n) => !n.text.trim() && !n.title.trim() && !n.keyword.trim() &&
 // 책갈피는 섹션(업무·생활·아이디어 …) 단위로 붙고, 섹션을 누르면 그 안의 메모 책갈피가 펼쳐진다.
 const SEC_COLORS = [
   { bg: 'var(--mikkang-blue)', ink: '#2e4845' }, { bg: 'var(--mikkang-pink)', ink: '#5a2331' },
-  { bg: 'var(--mikkang-yellow)', ink: '#5a4712' }, { bg: '#cbdccc', ink: '#2f4a2a' },
-  { bg: '#eee3bd', ink: '#514531' }, { bg: '#f7d0a9', ink: '#5c3214' },
-  { bg: '#eae9df', ink: '#454a43' }, { bg: '#e99868', ink: '#48291a' },
+  { bg: 'var(--mikkang-yellow)', ink: '#5a4712' }, { bg: 'var(--section-green, #cbdccc)', ink: '#2f4a2a' },
+  { bg: 'var(--section-cream, #eee3bd)', ink: '#514531' }, { bg: 'var(--section-orange, #f7d0a9)', ink: '#5c3214' },
+  { bg: 'var(--section-gray, #eae9df)', ink: '#454a43' }, { bg: 'var(--section-red, #e99868)', ink: '#48291a' },
 ];
 const INBOX = { id: '', name: '분류 없음', color: 6 };
 const DEFAULT_SECTIONS = () => [{ id: 's-work', name: '업무', color: 0 }, { id: 's-life', name: '생활', color: 3 }, { id: 's-idea', name: '아이디어', color: 1 }];

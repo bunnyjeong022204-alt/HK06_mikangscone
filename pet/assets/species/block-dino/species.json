@@ -1,0 +1,262 @@
+{
+  "id": "block-dino",
+  "displayName": "블록 공룡",
+  "version": "1.0.0",
+  "animations": {
+    "idle": {
+      "sheet": "sprites/idle.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 4,
+      "loop": true,
+      "mirrorWhen": "left"
+    },
+    "walk": {
+      "sheet": "sprites/walk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 9,
+      "loop": true,
+      "mirrorWhen": "left"
+    },
+    "sit": {
+      "sheet": "sprites/sit.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 2,
+      "fps": 3,
+      "loop": true,
+      "mirrorWhen": "left"
+    },
+    "sleep": {
+      "sheet": "sprites/sleep.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 3,
+      "loop": true,
+      "mirrorWhen": "left"
+    },
+    "dragged": {
+      "sheet": "sprites/dragged.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 10,
+      "loop": true,
+      "mirrorWhen": "left",
+      "authoredGrip": true
+    },
+    "react": {
+      "sheet": "sprites/react.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 9,
+      "loop": false,
+      "mirrorWhen": "left"
+    }
+  },
+  "behavior": {
+    "walkSpeedPxPerSec": 45,
+    "idleMinMs": 1800,
+    "idleMaxMs": 3700,
+    "walkMinMs": 4500,
+    "walkMaxMs": 8500,
+    "spriteScale": 0.55
+  },
+  "attribution": {
+    "author": "User-provided character reference",
+    "license": "User-provided project artwork"
+  },
+  "motions": {
+    "jump": {
+      "sheet": "sprites/jump.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 11,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "climb": {
+      "sheet": "sprites/climb.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 9,
+      "loop": true,
+      "mirrorWhen": "right",
+      "wallInsets": {
+        "left": 3,
+        "right": 3
+      }
+    },
+    "wallIdle": {
+      "sheet": "sprites/wallIdle.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 3,
+      "fps": 4,
+      "loop": true,
+      "mirrorWhen": "right",
+      "wallInsets": {
+        "left": 3,
+        "right": 3
+      }
+    },
+    "fly": {
+      "sheet": "sprites/fly.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 6,
+      "fps": 11,
+      "loop": true,
+      "mirrorWhen": "left"
+    },
+    "wallImpact": {
+      "sheet": "sprites/wallImpact.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 2,
+      "fps": 14,
+      "loop": false,
+      "mirrorWhen": "right"
+    },
+    "wallFall": {
+      "sheet": "sprites/wallFall.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 6,
+      "fps": 10,
+      "loop": true,
+      "mirrorWhen": "right"
+    },
+    "land": {
+      "sheet": "sprites/land.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 3,
+      "fps": 14,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "ouch": {
+      "sheet": "sprites/ouch.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 8,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "recover": {
+      "sheet": "sprites/recover.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 9,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "wake": {
+      "sheet": "sprites/wake.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 7,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "doze": {
+      "sheet": "sprites/doze.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 5,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "look": {
+      "sheet": "sprites/look.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 8,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "curious": {
+      "sheet": "sprites/curious.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 7,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "peek": {
+      "sheet": "sprites/peek.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 8,
+      "loop": false,
+      "mirrorWhen": "right"
+    },
+    "slip": {
+      "sheet": "sprites/slip.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 10,
+      "loop": false,
+      "mirrorWhen": "right"
+    },
+    "startle": {
+      "sheet": "sprites/startle.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 3,
+      "fps": 12,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "meet": {
+      "sheet": "sprites/meet.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 7,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "petBump": {
+      "sheet": "sprites/petBump.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 2,
+      "fps": 14,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "frontWalk": {
+      "sheet": "sprites/frontWalk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 9,
+      "loop": true
+    },
+    "backWalk": {
+      "sheet": "sprites/backWalk.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 9,
+      "loop": true
+    }
+  }
+}
