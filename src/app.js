@@ -305,15 +305,16 @@ function commitCurrent() {
   // 자동화: 내용이 바뀐 채로 접으면 비서가 알아서 정리하고 알람까지 맞춘다
   if (S.settings.autoOrganize && (n.text.trim() || (keys.anthropic && n.photos.length)) && n.orgHash !== noteHash(n)) organizeNote(n, { auto: true });
 }
-function closeAll() {
+function closeAll({ keepDock = false } = {}) {
   commitCurrent();
-  openId = null; selStk = null; summoned = false;
+  openId = null; selStk = null; summoned = keepDock;
   $('#sheet').classList.remove('open');
   closeBubble();
   renderTabs(); applyMode(); save();
   api.release();
 }
-function toggleNote(id) { if (openId === id) closeAll(); else openNote(id); }
+function closeNote() { closeAll({ keepDock: true }); }
+function toggleNote(id) { if (openId === id) closeNote(); else openNote(id); }
 function openNote(id) {
   const n = byId(id); if (!n) return;
   if (modalKind === 'board') closeBoard();
@@ -448,11 +449,11 @@ function renderCard(n) {
   let armed = 0;
   const delBtn = h('button', { class: 'btn icon del', type: 'button', 'aria-label': '메모 삭제', title: '메모 삭제', onclick: () => {
     if (!armed) { armed = 1; delBtn.classList.add('armed'); delBtn.textContent = '정말 삭제?'; setTimeout(() => { if (armed) { armed = 0; delBtn.classList.remove('armed'); delBtn.replaceChildren(iel('trash', 16)); } }, 3000); return; }
-    S.notes = S.notes.filter((x) => x !== n); openId = null; save(); closeAll();
+    S.notes = S.notes.filter((x) => x !== n); openId = null; closeNote();
   } }, iel('trash', 16));
   const bar = h('div', { class: 'bar' }, pal,
     h('div', { class: 'row' },
-      h('button', { class: 'btn icon fold', type: 'button', 'aria-label': '책갈피로 접기', title: '책갈피로 접기', onclick: closeAll, html: ico('fold', 16) }),
+      h('button', { class: 'btn icon fold', type: 'button', 'aria-label': '책갈피로 접기', title: '책갈피로 접기', onclick: closeNote, html: ico('fold', 16) }),
       filePicker({ cls: 'btn', title: '내 컴퓨터에서 사진 고르기', onFiles: (fs) => addPhotos(n, fs) }, iel('image', 16), '사진'),
       h('button', { class: 'btn', type: 'button', 'aria-haspopup': 'menu', onclick: () => { pal.hidden = !pal.hidden; } }, iel('star', 16), '스티커'),
       h('span', { style: 'margin-left:auto' }), aiBtn),
@@ -470,7 +471,7 @@ function renderCard(n) {
     card.prepend(h('header', { class: 'basic-note-head' },
       h('button', { class: 'basic-icon', type: 'button', 'aria-label': '새 메모', title: '새 메모', onclick: () => newNote(), html: ico('plus', 16) }),
       titleInput, menu,
-      h('button', { class: 'basic-icon', type: 'button', 'aria-label': '메모 닫기', title: '메모 닫기', onclick: closeAll, html: ico('x', 16) })));
+      h('button', { class: 'basic-icon', type: 'button', 'aria-label': '메모 닫기', title: '메모 닫기', onclick: closeNote, html: ico('x', 16) })));
     editor.toolbar.append(filePicker({ cls: 'basic-photo', title: '사진 첨부', label: '사진 첨부', onFiles: onImages }, iel('image', 16)));
     if (pp && tp.noteColors.length > 1) editor.toolbar.append(h('span', { class: 'paper-colors', role: 'group', 'aria-label': '메모지 색' },
       tp.noteColors.map((c) => h('button', { type: 'button', 'aria-label': `${c.name} 메모지`, title: c.name, 'aria-pressed': String(c.id === pp.id), style: `--sw:${c.bg}`,
@@ -1743,7 +1744,8 @@ function bindGlobal() {
     if (modalOpen) { if (viewerKeys) closeViewer(); else if (modalKind === 'board') closeBoard(); else closeSettings(); return; }
     const p = $('.pal:not([hidden])'); if (p) { p.hidden = true; return; }
     if (addingSec) { addingSec = false; renderTabs(); return; }
-    if (openId || bubble.open || summoned) closeAll();
+    if (openId) closeNote();
+    else if (bubble.open || summoned) closeAll();
   });
   addEventListener('resize', () => { fit(); if (bubble.open) placeBubble(); });
 }
