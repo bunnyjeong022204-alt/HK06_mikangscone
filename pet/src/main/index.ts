@@ -81,7 +81,7 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
   statsTracker.load();
   progressionTracker.start();
 
-  const window = windowManager.create(appSettings.isPetVisible());
+  const window = windowManager.create(true);
   registerIpcHandlers(windowManager, progressionTracker, statsTracker);
 
   let activeSpecies = process.env.PET_SPECIES_ID ?? appSettings.getSelectedSpeciesId();
@@ -133,8 +133,13 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
 
   ipcMain.on(IPC.RENDERER_READY, (event) => {
     if (event.sender !== window.webContents) return;
+    const scene = loadCompanionScene(loadSpeciesWithFallback(activeSpecies));
+    activeSpecies = scene.id;
+    if ([scene, ...(scene.companions ?? [])].every(({ id }) => dismissed.has(id))) {
+      dismissed.delete(scene.id);
+    }
     rendererReady = true;
-    publish(loadCompanionScene(loadSpeciesWithFallback(activeSpecies)));
+    publish(scene);
     watchActiveSpecies(activeSpecies, publish);
   });
   const show = (id?: string) => {
@@ -162,7 +167,6 @@ export function isPetVisible(): boolean {
 
 export function setPetVisible(visible: boolean): void {
   windowManager.setVisibility(visible);
-  appSettings.setPetVisible(visible);
   onVisibilityChange?.();
 }
 

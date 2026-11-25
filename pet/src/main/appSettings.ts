@@ -5,7 +5,6 @@ import path from 'node:path';
 interface PersistedSettings {
   selectedSpeciesId?: string;
   dismissedSpeciesIds?: string[];
-  petVisible?: boolean;
 }
 
 const DEFAULT_SPECIES_ID = 'mikkang';
@@ -39,15 +38,6 @@ export class AppSettings {
 
   getSelectedSpeciesId(): string {
     return this.settings.selectedSpeciesId ?? process.env.PET_DEFAULT_SPECIES_ID ?? DEFAULT_SPECIES_ID;
-  }
-
-  isPetVisible(): boolean {
-    return this.settings.petVisible !== false;
-  }
-
-  setPetVisible(visible: boolean): void {
-    this.settings.petVisible = visible;
-    this.save();
   }
 
   setSelectedSpeciesId(id: string): void {

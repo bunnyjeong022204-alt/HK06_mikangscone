@@ -113,7 +113,9 @@ function buildTrayMenu() {
     { label: '일정 보기', click: () => send('cmd', 'agenda') },
     { label: '전체보기', click: () => send('cmd', 'board') },
     { label: 'AI 비서', click: () => send('cmd', 'assistant') },
-    { label: '데스크톱 펫 표시', type: 'checkbox', checked: pet.isPetVisible(), click: (item) => pet.setPetVisible(item.checked) },
+    petControls?.state().present
+      ? { label: '데스크톱 펫 숨기기', click: () => pet.setPetVisible(false) }
+      : { label: '펫 소환하기', click: () => petControls?.show() },
     { type: 'separator' },
     { label: '화면 모드', submenu: [mode('auto', '펫에서 열기'), mode('desktop', '책갈피 표시')] },
     { label: '설정…', click: () => send('cmd', 'settings') },
@@ -144,8 +146,9 @@ ipcMain.on('win:release', () => { if (win && IS_WIN) win.blur(); });
 ipcMain.handle('app:info', () => ({ platform: process.platform, version: app.getVersion(), demo: DEMO, args: ARGS, proPreview: !app.isPackaged || DEMO }));
 ipcMain.handle('memo-pet:visible', (event, visible) => {
   if (event.sender !== win?.webContents) return false;
-  if (typeof visible === 'boolean') pet.setPetVisible(visible);
-  return pet.isPetVisible();
+  if (visible === true) petControls?.show();
+  else if (visible === false) pet.setPetVisible(false);
+  return petControls?.state().present ?? false;
 });
 ipcMain.handle('memo-pet:controls', async (event, action, id) => {
   if (!win || event.sender !== win.webContents || !petControls) return null;
@@ -226,7 +229,11 @@ ipcMain.handle('mic:ask', async () => {
 });
 
 /* ───────── 시작 ───────── */
-app.on('second-instance', (_event, args) => send('cmd', args.includes('--overview') ? 'board' : 'summon'));
+app.on('second-instance', (_event, args) => {
+  if (args.includes('--overview')) send('cmd', 'board');
+  else if (petControls && !petControls.state().present) petControls.show();
+  else send('cmd', 'summon');
+});
 app.whenReady().then(() => {
   if (IS_MAC && app.dock) app.dock.hide(); // 독 아이콘 없이 상주 (메뉴 막대 아이콘으로 조작)
   session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(['media', 'notifications', 'clipboard-sanitized-write'].includes(perm)));
