@@ -27,6 +27,8 @@ let win = null, tray = null, interactive = false, lastCursor = '', modeOverride 
 let display = null;
 let quitting = false;
 let stopBackground = () => {};
+let petControls = null;
+let proPreview = false;
 
 const send = (ch, ...a) => { if (win && !win.isDestroyed()) win.webContents.send(ch, ...a); };
 
@@ -109,7 +111,7 @@ function buildTrayMenu() {
     { label: '새 메모', click: () => send('cmd', 'new') },
     { label: '녹음 메모', accelerator: 'CommandOrControl+Shift+R', click: () => send('cmd', 'record') },
     { label: '일정 보기', click: () => send('cmd', 'agenda') },
-    { label: '메모 모아보기', click: () => send('cmd', 'board') },
+    { label: '전체보기', click: () => send('cmd', 'board') },
     { label: 'AI 비서', click: () => send('cmd', 'assistant') },
     { label: '데스크톱 펫 표시', type: 'checkbox', checked: pet.isPetVisible(), click: (item) => pet.setPetVisible(item.checked) },
     { type: 'separator' },
@@ -145,10 +147,21 @@ ipcMain.handle('memo-pet:visible', (event, visible) => {
   if (typeof visible === 'boolean') pet.setPetVisible(visible);
   return pet.isPetVisible();
 });
+ipcMain.handle('memo-pet:controls', async (event, action, id) => {
+  if (!win || event.sender !== win.webContents || !petControls) return null;
+  if (action === 'show') petControls.show(typeof id === 'string' ? id : undefined);
+  if (action === 'photo' && proPreview) {
+    await petControls.importPhoto(win);
+  }
+  return petControls.state();
+});
 ipcMain.on('app:openData', () => shell.openPath(store.dir()));
 ipcMain.on('app:quit', () => app.quit());
-ipcMain.on('settings:apply', (_e, s) => {
+ipcMain.on('settings:apply', (event, s) => {
   if (!s) return;
+  if (event.sender === win?.webContents && typeof s.proPreview === 'boolean') {
+    proPreview = (!app.isPackaged || DEMO) && s.proPreview;
+  }
   if (typeof s.launchAtLogin === 'boolean' && app.isPackaged) app.setLoginItemSettings({ openAtLogin: s.launchAtLogin, openAsHidden: true });
   if (s.modeOverride && s.modeOverride !== modeOverride) { modeOverride = s.modeOverride; if (tray) buildTrayMenu(); }
 });
@@ -213,7 +226,10 @@ app.whenReady().then(() => {
   if (IS_MAC && app.dock) app.dock.hide(); // 독 아이콘 없이 상주 (메뉴 막대 아이콘으로 조작)
   session.defaultSession.setPermissionRequestHandler((_wc, perm, cb) => cb(['media', 'notifications', 'clipboard-sanitized-write'].includes(perm)));
   session.defaultSession.setPermissionCheckHandler((_wc, perm) => ['media', 'notifications'].includes(perm));
-  pet.startPet(() => { if (tray) buildTrayMenu(); }, () => send('cmd', 'pet-memo'));
+  petControls = pet.startPet(() => {
+    if (tray) buildTrayMenu();
+    send('pet-changed');
+  }, () => send('cmd', 'pet-memo'));
   createOverlay();
   createTray();
   registerShortcuts();

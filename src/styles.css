@@ -33,9 +33,9 @@ svg{display:block}
 .dock::-webkit-scrollbar{display:none}
 .side-right .dock{right:0;align-items:flex-end}
 .side-left .dock{left:0;align-items:flex-start}
-.stage.dock-hidden .dock{opacity:0;pointer-events:none}
-.side-right.dock-hidden .dock{transform:translateX(120%)}
-.side-left.dock-hidden .dock{transform:translateX(-120%)}
+.stage:is(.dock-hidden,.overview-open) .dock{pointer-events:none}
+.stage:is(.dock-hidden,.overview-open) .dock > :not(.overview-tab){display:none}
+.dock .overview-tab{position:sticky;top:0;z-index:2;pointer-events:auto}
 .tab{--tc:#fff;--ti:#333;position:relative;flex:none;display:flex;flex-direction:column;justify-content:center;gap:2px;width:max-content;min-width:96px;max-width:176px;min-height:46px;padding:8px 22px;border:0;background:var(--tc);color:var(--ti);font-family:var(--f-display);font-size:17px;line-height:1.1;text-align:left;box-shadow:0 4px 10px rgba(50,40,30,.2),inset 0 -2px 0 rgba(0,0,0,.07);transition:transform .3s cubic-bezier(.2,.9,.3,1.25)}
 .tab::before{content:'';position:absolute;top:50%;width:9px;height:9px;margin-top:-4.5px;border-radius:50%;background:rgba(255,255,255,.78);box-shadow:inset 0 1px 2px rgba(0,0,0,.28)}
 .side-right .tab{border-radius:16px 0 0 16px;transform:translateX(14px);padding-left:28px}
@@ -68,7 +68,6 @@ svg{display:block}
 .content{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;gap:8px;padding:var(--pad)}
 .kw{width:100%;border:0;outline:0;padding:0 4px;background:linear-gradient(transparent 64%,var(--hl) 64%);font-family:var(--f-display);font-size:40px;line-height:1.15;color:var(--ink)}
 .kw::placeholder{color:rgba(58,52,48,.28)}
-.ttl{border:0;outline:0;border-bottom:1px dashed var(--line);background:transparent;padding:3px 2px;font-size:14px;color:var(--ink-soft);font-family:var(--f-ui)}
 .body{flex:1;min-height:70px;resize:none;border:0;outline:0;background-image:repeating-linear-gradient(to bottom,transparent 0 29px,var(--rule) 29px 30px);background-attachment:local;background-color:transparent;font-family:var(--f-hand);font-size:23px;line-height:30px;color:var(--ink);padding:0 2px}
 .body::placeholder{color:rgba(58,52,48,.35)}
 .photos,.audios{display:flex;gap:8px;flex-wrap:wrap}
@@ -153,14 +152,8 @@ svg{display:block}
 .pal svg{width:40px;height:auto;max-height:40px}
 
 /* ───── 일정 정리 ───── */
-.acard{position:relative;width:420px;height:560px;border-radius:26px;background:var(--paper);box-shadow:0 14px 18px rgba(60,45,30,.2);display:flex;flex-direction:column;padding:44px 26px 20px}
-.acard::before{content:'';position:absolute;inset:10px;border:1.8px dashed rgba(58,52,48,.25);border-radius:18px;pointer-events:none}
-.acard .clip{left:40%}
-.ahead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.ahead h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:30px;background:linear-gradient(transparent 64%,rgba(169,211,238,.7) 64%);padding:0 4px}
 .brief{margin:10px 0 6px;padding:9px 12px;border-radius:12px;background:rgba(169,211,238,.3);font-size:13px;line-height:1.55}
 .brief .sh{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-soft);margin-bottom:2px}
-.alist{flex:1;overflow:auto;padding-right:4px;display:grid;align-content:start;gap:4px}
 .gh{margin:10px 0 2px;font-size:12px;color:var(--ink-soft);letter-spacing:.02em}
 .arow{display:flex;gap:9px;align-items:flex-start;padding:7px 4px;border-bottom:1px dashed var(--line)}
 .arow .ck{flex:none;width:22px;height:22px;margin-top:2px;border-radius:7px;border:1.8px solid var(--ink-soft);background:#fff;display:grid;place-items:center;padding:0;color:transparent}
@@ -174,7 +167,6 @@ svg{display:block}
 .ib{border:0;background:transparent;padding:3px;border-radius:6px;display:grid;place-items:center;color:var(--ink-soft)}
 .ib.on{color:var(--cherry)}
 .empty{padding:26px 8px;text-align:center;color:var(--ink-soft);font-size:13px;line-height:1.6}
-.afoot{display:flex;gap:6px;padding-top:10px;flex-wrap:wrap}
 
 /* ───── 캐릭터(펫) ───── */
 .c-svg{width:100%;height:100%;overflow:visible}
@@ -186,8 +178,6 @@ svg{display:block}
 .c-svg .c-open{opacity:0}
 .c-svg .c-leaf,.c-svg .c-ears{animation:sway 3.2s ease-in-out infinite}
 .c-svg .c-tail{animation:sway 1.8s ease-in-out infinite}
-.mood-talk .c-svg .c-open{opacity:1;animation:talk .28s ease-in-out infinite alternate}
-.mood-talk .c-svg .c-smile{opacity:0}
 .mood-alert .c-svg .c-body,.mood-alert .c-custom img{animation:hop .5s ease-in-out infinite}
 .mood-think .c-svg .c-eyes{transform:translateY(-2px)}
 .mood-listen .c-svg .c-body{animation:bob 1.2s ease-in-out infinite}
@@ -195,7 +185,6 @@ svg{display:block}
 .mood-think::before{content:'···';position:absolute;top:-8px;right:-4px;padding:0 6px;border-radius:10px;background:#fff;font-weight:700;letter-spacing:1px;box-shadow:0 2px 6px rgba(0,0,0,.15);animation:pulse 1s infinite}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 @keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
-@keyframes talk{from{transform:scaleY(.4)}to{transform:scaleY(1.1)}}
 @keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
 @keyframes hop{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-8px) rotate(-5deg)}60%{transform:translateY(0) rotate(5deg)}}
 @keyframes ring{from{transform:scale(.85);opacity:1}to{transform:scale(1.25);opacity:0}}
@@ -229,7 +218,7 @@ svg{display:block}
 .pcard .dots i.on{background:var(--ink)}
 
 /* ───── 알림 토스트 ───── */
-.toasts{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:60;display:grid;gap:8px;width:min(380px,92vw)}
+.toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:95;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;width:min(380px,92vw);max-height:calc(100% - 32px);overflow:auto}
 .toast{display:flex;gap:10px;padding:11px 12px;border-radius:16px;background:rgba(255,253,248,.98);box-shadow:0 12px 28px rgba(50,40,30,.28);animation:drop .35s cubic-bezier(.2,.9,.3,1.2)}
 @keyframes drop{from{transform:translateY(-14px);opacity:0}}
 .toast .bi{flex:none;width:36px;height:36px;border-radius:12px;display:grid;place-items:center}
@@ -305,7 +294,6 @@ svg{display:block}
 .secinput{width:110px;border:0;border-bottom:1.5px solid var(--ink);background:transparent;font:15px var(--f-display);outline:0;padding:2px}
 /* 메모지 분류 고르기 */
 .ttlrow{display:flex;align-items:center;gap:8px}
-.ttlrow .ttl{flex:1;min-width:0}
 .secpick{display:inline-flex;align-items:center;gap:3px;color:var(--ink-soft);flex:none}
 .secsel{max-width:132px;height:26px;border:0;border-radius:13px;padding:0 8px;background:var(--tc,#eee);color:var(--ti,#333);font:13px var(--f-display);cursor:pointer}
 input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px var(--f-ui);cursor:text}
@@ -317,14 +305,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 /* ───── 캐릭터 말풍선 버튼 ───── */
 
 /* ───── 메모 모아보기 위젯 (화면 위 고정) ───── */
-.widget{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:46}
-.wbtn{display:flex;align-items:center;gap:8px;height:36px;padding:0 6px 0 12px;border:0;border-radius:18px;background:rgba(58,52,48,.9);color:#fcf8ee;box-shadow:0 6px 16px rgba(30,20,10,.25);backdrop-filter:blur(8px);font:13px var(--f-ui)}
-.wbtn b{font:400 14.5px var(--f-display)}
-.wbtn .wpin{display:grid;place-items:center;color:#f7a23f}
-.wbtn .wcount{min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:#fcf8ee;color:#3a3430;display:grid;place-items:center;font-size:12px;font-variant-numeric:tabular-nums}
-.wbtn .wtoday{height:22px;padding:0 8px;border-radius:11px;background:#d93a35;color:#fff;display:grid;place-items:center;font-size:11.5px}
-.wbtn:hover{background:#3a3430}
-.toasts{top:54px}
 
 /* 사진 끌어다 놓는 중 */
 .stage.filedrag::after{content:'사진을 놓으면 메모에 들어가요';position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:95;padding:10px 18px;border-radius:14px;background:#d93a35;color:#fff;font:16px var(--f-display);box-shadow:0 10px 24px rgba(0,0,0,.25);pointer-events:none}

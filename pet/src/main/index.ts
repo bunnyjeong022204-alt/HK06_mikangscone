@@ -15,7 +15,7 @@ import { loadCompanionScene } from './sceneLoader';
 import fs from 'node:fs';
 import { getLocalSpeciesRoot } from './speciesLoader';
 import { IPC } from '../shared/ipcContract';
-import { runPetMenuAction } from './petMenu';
+import { pickImage, runPetMenuAction } from './petMenu';
 import type { SpeciesConfig } from '../shared/speciesSchema';
 
 const FALLBACK_SPECIES_ID = 'placeholder';
@@ -73,7 +73,7 @@ function watchActiveSpecies(speciesId: string, publish: (scene: SpeciesConfig) =
   unwatchSpecies = () => { watcher.close(); unwatchers.forEach((stop) => stop()); };
 }
 
-export function startPet(notifyVisibilityChange: () => void, openMemo: () => void): void {
+export function startPet(notifyVisibilityChange: () => void, openMemo: () => void) {
   onVisibilityChange = notifyVisibilityChange;
   registerAssetProtocolHandler();
   ensureLocalSpeciesRoot();
@@ -90,6 +90,7 @@ export function startPet(notifyVisibilityChange: () => void, openMemo: () => voi
   const publish = (scene: SpeciesConfig) => {
     visibleSpecies = new Set([scene, ...(scene.companions ?? [])].map(({ id }) => id).filter((id) => !dismissed.has(id)));
     sendSpeciesLoaded(window, { ...scene, dismissedIds: [...dismissed] });
+    notifyVisibilityChange();
   };
   const selectPet = (id: string) => {
     const scene = loadCompanionScene(loadSpecies(id));
@@ -104,7 +105,12 @@ export function startPet(notifyVisibilityChange: () => void, openMemo: () => voi
     dismissed.add(id);
     appSettings.dismissSpecies(id);
     window.webContents.send(IPC.PET_DISMISSED, id);
+    notifyVisibilityChange();
   };
+  const speciesOptions = () => listAvailableSpecies().map(({ id, displayName }) => ({
+    id, label: displayName, visible: visibleSpecies.has(id), dismissed: dismissed.has(id),
+    selected: id === activeSpecies && visibleSpecies.has(id),
+  }));
   ipcMain.handle(IPC.CURSOR_POINT, (event) => {
     if (window.isDestroyed() || event.sender !== window.webContents) return { x: -1, y: -1 };
     const cursor = screen.getCursorScreenPoint();
@@ -113,8 +119,7 @@ export function startPet(notifyVisibilityChange: () => void, openMemo: () => voi
   });
   ipcMain.handle(IPC.PET_MENU_SPECIES, (event) => {
     if (event.sender !== window.webContents) return [];
-    return listAvailableSpecies().map(({ id, displayName }) => ({ id, label: displayName,
-      visible: visibleSpecies.has(id), dismissed: dismissed.has(id), selected: id === activeSpecies && visibleSpecies.has(id) }));
+    return speciesOptions();
   });
   ipcMain.on(IPC.PET_MENU_ACTION, (event, action: unknown) => {
     if (event.sender === window.webContents) {
@@ -130,6 +135,18 @@ export function startPet(notifyVisibilityChange: () => void, openMemo: () => voi
     publish(loadCompanionScene(loadSpeciesWithFallback(activeSpecies)));
     watchActiveSpecies(activeSpecies, publish);
   });
+  const show = (id?: string) => {
+    const species = speciesOptions();
+    if (id && !species.some((item) => item.id === id)) return;
+    const next = id ?? species.find((item) => item.id === activeSpecies)?.id ?? FALLBACK_SPECIES_ID;
+    if (id || !visibleSpecies.size) selectPet(next);
+    setPetVisible(true);
+  };
+  return {
+    state: () => ({ present: isPetVisible() && visibleSpecies.size > 0, species: speciesOptions() }),
+    show,
+    importPhoto: (parent: Electron.BrowserWindow) => pickImage(parent, show),
+  };
 }
 
 export function isPetVisible(): boolean {

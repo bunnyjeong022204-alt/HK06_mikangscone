@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('api', {
   quit: () => ipcRenderer.send('app:quit'),
   applySettings: (s) => ipcRenderer.send('settings:apply', s),
   petVisible: (visible) => ipcRenderer.invoke('memo-pet:visible', visible),
+  petControls: (action, id) => ipcRenderer.invoke('memo-pet:controls', action, id),
+  onPetChanged: on('pet-changed'),
   notify: (o) => ipcRenderer.send('notify', o),
   keyStatus: () => ipcRenderer.invoke('keys:status'),
   setKey: (name, value) => ipcRenderer.invoke('keys:set', name, value),

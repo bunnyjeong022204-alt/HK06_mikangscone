@@ -114,12 +114,7 @@ export class PetQuickMenu {
     title.textContent = this.empty ? '캐릭터 추가' : '캐릭터 변경';
     const list = document.createElement('div');
     list.className = 'pet-character-list';
-    const importButton = document.createElement('button');
-    importButton.type = 'button';
-    importButton.className = 'pet-menu-import';
-    importButton.textContent = '저장한 이미지 열기…';
-    importButton.addEventListener('click', () => this.dispatch({ kind: 'openImage' }));
-    view.append(back, title, list, importButton);
+    view.append(back, title, list);
     this.panel.replaceChildren(view);
     this.place();
     back.focus({ preventScroll: true });

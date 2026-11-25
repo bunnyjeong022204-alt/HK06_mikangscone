@@ -29,8 +29,7 @@
 
 .panel,
 .bubble,
-.toast,
-.acard {
+.toast {
   color: var(--mikkang-ink);
   border-color: var(--mikkang-line);
   box-shadow: var(--mikkang-shadow);
@@ -38,21 +37,15 @@
 
 .btn.primary,
 .seg button[aria-pressed="true"],
-.wbtn,
-.wbtn:hover {
+.tab.overview-tab {
+  --tc: var(--mikkang-action);
+  --ti: var(--mikkang-surface);
   color: var(--mikkang-surface);
   background: var(--mikkang-action);
   border-color: var(--mikkang-action);
 }
 
-.wbtn .wpin {
-  color: var(--mikkang-yellow);
-}
-
-.wbtn .wtoday {
-  color: var(--mikkang-ink);
-  background: var(--mikkang-yellow);
-}
+.overview-tab-label { display: flex; align-items: center; gap: 6px; }
 
 .tab.add {
   --tc: var(--mikkang-surface);
@@ -102,7 +95,7 @@
 .basic-note .orn,
 .basic-note:not(.basic-details) .kw,
 .basic-note:not(.basic-details) .ttlrow,
-.basic-note:not(.basic-details) .chips,
+.basic-note:not(.basic-details) .chip.cand,
 .basic-note:not(.basic-details) .bar,
 .basic-note .bar .sw,
 .basic-note .bar .lbl {
@@ -125,7 +118,11 @@
 
 .basic-note-caption {
   flex: 1;
-  text-align: center;
+  min-width: 0;
+  padding: 4px;
+  border: 0;
+  color: inherit;
+  background: transparent;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -178,6 +175,8 @@
 }
 
 .basic-note .kw { font-size: 24px; }
+.chip .dday-toggle { width: auto; min-width: 34px; padding: 0 4px; font-size: 10px; white-space: nowrap; }
+.chip .dday-toggle[aria-pressed="true"] { color: var(--mikkang-action); font-weight: 700; }
 .basic-note .bar { width: 100%; margin-top: 8px; }
 .basic-note .bar .row { flex-wrap: wrap; }
 .basic-format { border-top: 1px solid #8f79421f; }
@@ -187,14 +186,14 @@
 .basic-format-strikeThrough { text-decoration: line-through; }
 
 .modal.boardwrap {
-  place-items: start;
+  place-items: start end;
   grid-template-rows: minmax(0, 1fr);
-  padding: 49px 12px 10px;
+  padding: 80px 12px 10px;
   background: transparent;
   pointer-events: none;
 }
 
-.side-left .modal.boardwrap { justify-items: end; }
+.side-left .modal.boardwrap { justify-items: start; }
 
 .mikkang-overview {
   display: grid;
@@ -222,8 +221,23 @@
   text-align: left;
 }
 
-.overview-assistant,
-.overview-ai { background: var(--mikkang-sage-light); }
+.overview-assistant { background: var(--mikkang-sage-light); }
+.overview-pet { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; }
+.overview-pet-choice { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.overview-pet select, .overview-calendar input {
+  max-width: 155px;
+  min-height: 30px;
+  padding: 4px 6px;
+  border: 1px solid var(--mikkang-line);
+  border-radius: 8px;
+  color: var(--mikkang-ink);
+  background: var(--mikkang-surface);
+  font: 12px var(--f-ui);
+}
+.overview-pet small { color: var(--mikkang-muted); }
+.overview-calendar { margin: 10px 0 6px; }
+.overview-calendar strong { font-size: 13px; }
+.overview-schedule-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 
 .overview-row {
   display: flex;
@@ -299,33 +313,7 @@
   font-size: 12px;
   font-weight: 700;
 }
-.overview-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: 10px 0; }
-.overview-week button {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  padding: 6px 0;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: #f1eee1;
-}
-.overview-week button[aria-pressed="true"] { border-color: var(--mikkang-sage); background: var(--mikkang-sage-light); }
-
 .overview-muted { margin: 8px 0 0; color: var(--mikkang-muted); font-size: 12px; line-height: 1.45; }
-.overview-events { padding: 0; margin: 0; list-style: none; }
-.overview-events button {
-  display: flex;
-  width: 100%;
-  gap: 8px;
-  justify-content: space-between;
-  padding: 6px 0;
-  border: 0;
-  background: none;
-  text-align: left;
-  font-size: 12px;
-}
-.overview-events time { flex: none; color: var(--mikkang-muted); }
-
 .mikkang-overview .bfilter { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
 .mikkang-overview .bfilter button {
   padding: 4px 9px;
@@ -383,20 +371,17 @@
 }
 .overview-note-open span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.overview-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.overview-mini { display: grid; gap: 8px; }
-.overview-date,
 .overview-record { display: flex; align-items: center; gap: 7px; font-size: 12px; }
-.overview-date strong,
 .overview-record > span:first-child {
   min-width: 28px;
   color: var(--mikkang-action);
   font-size: 20px;
 }
 .overview-record small { display: block; margin-top: 3px; color: var(--mikkang-muted); }
-.overview-ai .btn { width: 100%; margin-top: 9px; justify-content: center; }
 .overview-ai .btn:disabled { opacity: .55; cursor: default; }
-.overview-summary { font-size: 12px; line-height: 1.5; }
+.overview-summary { margin-top: 11px; padding-top: 9px; border-top: 1px solid var(--mikkang-line); font-size: 12px; line-height: 1.5; }
+.overview-summary summary { cursor: pointer; }
+.overview-summary .btn { margin-top: 8px; }
 .overview-summary ul { margin-bottom: 0; padding-left: 19px; }
 .overview-summary .bsum-ai { white-space: pre-line; }
 

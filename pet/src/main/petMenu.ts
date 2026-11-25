@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { SpeciesAnimationDef, SpeciesConfig } from '../shared/speciesSchema';
 import { getLocalSpeciesRoot, listAvailableSpecies } from './speciesLoader';
 
-async function pickImage(parent: BrowserWindow, select: (id: string) => void) {
+export async function pickImage(parent: BrowserWindow, select: (id: string) => void) {
   const result = await dialog.showOpenDialog(parent, { title: '펫으로 쓸 이미지 선택', properties: ['openFile'],
     filters: [{ name: '이미지', extensions: ['png', 'jpeg', 'jpg', 'webp'] }] });
   if (result.canceled || !result.filePaths[0]) return;
@@ -50,7 +50,6 @@ export async function runPetMenuAction(window: BrowserWindow, action: unknown, s
       case 'dismiss':
         if ('id' in action && typeof action.id === 'string') dismiss(action.id);
         break;
-      case 'openImage': await pickImage(window, select); break;
       case 'hide': hide(); break;
     }
   } catch (error) {
