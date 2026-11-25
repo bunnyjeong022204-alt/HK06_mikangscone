@@ -6,7 +6,6 @@
       <path fill="#141414" d="M58 132C48 125 34 111 30 97c-3-12 0-17 15-15l31 3c12-9 29-15 48-16l21-22c8-8 17-3 21 7 8 19 12 40 8 59-1 21-23 41-46 45-27 8-57-3-70-26z"/>
       <path fill="#f4f1ea" d="M37 91c6-3 14 0 24 2-3 7-5 15-4 22-8-5-15-13-20-24z"/>
       <path fill="none" stroke="#f4f1ea" stroke-width="4.5" d="M73 119c6 8 15 8 22-1m25-1c6 7 15 6 21-3"/>
-      <ellipse cx="110" cy="131" rx="1.7" ry="1.2" fill="#bd9187"/>
       <path fill="none" stroke="#bd9187" stroke-width="2" d="M105.5 135q2.5 2.4 4.5.4 2 2 4.5-.4"/>
       <path fill="none" stroke="#414141" stroke-width="2" d="M115 163q11-4 20 0m-27 5q9-4 18-2"/>
     </g>
