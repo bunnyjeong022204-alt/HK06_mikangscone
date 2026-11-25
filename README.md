@@ -4,7 +4,9 @@
 
 **[Windows 실행 파일 다운로드](https://github.com/forethinkfi/HK06_mikangscone/releases/latest/download/MikangMemo-Windows.exe)** · Windows 64비트. 다운로드한 `MikangMemo-Windows.exe`를 열면 설치 없이 실행돼요.
 
-Windows 설치 파일과 macOS `.dmg`는 GitHub **Actions → Build desktop app**에서 받을 수 있어요. `Download ZIP`으로 받은 소스는 아래 [개발용 실행 방법](#실행하기-개발용)을 따라 실행할 수 있어요. `preview/mikang-preview.html`은 브라우저 미리보기라 바탕화면 펫이 표시되지 않아요.
+**macOS 다운로드** · [Apple Silicon (M 시리즈)](https://github.com/forethinkfi/HK06_mikangscone/releases/latest/download/MikangMemo-macOS-AppleSilicon.dmg) · [Intel Mac](https://github.com/forethinkfi/HK06_mikangscone/releases/latest/download/MikangMemo-macOS-Intel.dmg). `.dmg`를 열고 **Mikang Memo**를 응용 프로그램 폴더에 옮긴 뒤 실행하세요.
+
+Windows 설치 파일은 GitHub **Actions → Build desktop app**에서 받을 수 있어요. `Download ZIP`으로 받은 소스는 아래 [개발용 실행 방법](#실행하기-개발용)을 따라 실행할 수 있어요. `preview/mikang-preview.html`은 브라우저 미리보기라 바탕화면 펫이 표시되지 않아요.
 
 ## 이렇게 동작해요
 
@@ -95,7 +97,7 @@ npm run dist:mac
 
 GitHub에서 자동으로 만들 수도 있어요: 저장소의 **Actions → Build desktop app → Run workflow**를 누르면 Windows·macOS 설치 파일이 아티팩트로 올라와요. `v0.2.0`처럼 `v`로 시작하는 태그를 올려도 실행돼요.
 
-> macOS 설치 파일은 코드 서명이 되어 있지 않아서, 처음 열 때 앱을 **우클릭 → 열기**로 실행해야 해요. 정식 배포 시에는 Apple 개발자 인증서로 서명·공증하세요.
+> macOS 파일은 임시 서명되어 있어요. Apple 공증 전 빌드라 첫 실행이 차단되면 [Apple의 앱 열기 안내](https://support.apple.com/ko-kr/102445)를 참고하세요.
 
 ## AI 연결 (선택)
 
