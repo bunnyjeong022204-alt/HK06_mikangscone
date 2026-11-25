@@ -2,13 +2,13 @@
 
 바탕화면 가장자리에 책갈피처럼 붙어 있는 메모지 + AI 비서 캐릭터. Windows와 macOS에서 동작하는 Electron 앱입니다.
 
-**[Windows 실행 파일 다운로드](https://github.com/forethinkfi/HK06_mikangscone/raw/refs/heads/main/MikangMemo-Windows.exe)** · Windows 64비트. 다운로드한 `MikangMemo-Windows.exe`를 열면 설치 없이 실행돼요.
+**[Windows 실행파일 바로 받기](https://github.com/forethinkfi/HK06_mikangscone/raw/refs/heads/main/MikangMemo-Windows.exe)** · Windows 64비트. 다운로드 폴더에서 약 196MB인 `MikangMemo-Windows.exe`를 더블클릭하면 설치 없이 실행돼요.
 
 **macOS 다운로드** · [Apple Silicon (M 시리즈)](https://github.com/forethinkfi/HK06_mikangscone/raw/refs/heads/main/MikangMemo-macOS-AppleSilicon.dmg) · [Intel Mac](https://github.com/forethinkfi/HK06_mikangscone/raw/refs/heads/main/MikangMemo-macOS-Intel.dmg). `.dmg`를 열고 **Mikang Memo**를 응용 프로그램 폴더에 옮긴 뒤 실행하세요.
 
 `main`의 앱 코드가 바뀌면 GitHub Actions가 세 파일을 다시 빌드하고 검증한 뒤 저장소 최상위 파일을 Git LFS로 갱신해요.
 
-Windows 설치 파일은 GitHub **Actions → Build desktop app**에서 받을 수 있어요. `Download ZIP`으로 받은 소스는 아래 [개발용 실행 방법](#실행하기-개발용)을 따라 실행할 수 있어요. `preview/mikang-preview.html`은 브라우저 미리보기라 바탕화면 펫이 표시되지 않아요.
+**앱을 실행하려면 위의 운영체제별 링크로 받으세요.** GitHub의 **Code → Download ZIP**에 들어 있는 1KB 크기의 `.exe`나 `.dmg`는 Git LFS 참조 파일이라 열 수 없어요. ZIP으로 받은 소스는 [개발용 실행 방법](#실행하기-개발용)을 따라 실행할 수 있어요. Windows 설치 파일은 **Actions → Build desktop app**에서도 받을 수 있어요.
 
 ## 이렇게 동작해요
 
