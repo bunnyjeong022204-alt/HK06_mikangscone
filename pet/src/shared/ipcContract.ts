@@ -19,6 +19,7 @@ export const IPC = {
   PET_MENU_ACTION: 'pet:menuAction',
   PET_DISMISSED: 'pet:dismissed',
   OPEN_BOOKMARKS: 'pet:openBookmarks',
+  SCHEDULE_SPEECH: 'pet:scheduleSpeech',
   CURSOR_POINT: 'pet:cursorPoint',
 } as const;
 
@@ -56,6 +57,7 @@ export interface PetAPI {
   getPetMenuSpecies(): Promise<PetMenuSpecies[]>;
   runPetMenuAction(action: PetMenuAction): void;
   openBookmarks(): void;
+  onScheduleSpeech(callback: (text: string) => void): void;
   getCursorPoint(): Promise<{ x: number; y: number }>;
   setClickThrough(ignore: boolean): void;
   dragStart(): void;

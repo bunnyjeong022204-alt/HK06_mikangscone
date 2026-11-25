@@ -155,6 +155,11 @@ ipcMain.handle('memo-pet:controls', async (event, action, id) => {
   }
   return petControls.state();
 });
+ipcMain.handle('memo-pet:schedule-speech', (event, text) => {
+  if (event.sender !== win?.webContents || typeof text !== 'string') return false;
+  const line = text.trim().slice(0, 160);
+  return line ? (petControls?.speakSchedule(line) ?? false) : false;
+});
 ipcMain.on('app:openData', () => shell.openPath(store.dir()));
 ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('settings:apply', (event, s) => {

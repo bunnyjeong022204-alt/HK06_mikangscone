@@ -148,11 +148,11 @@ async function main(): Promise<void> {
   const schedule = () => {
     nextChat = performance.now() + 1000 * ((chatter?.minIntervalSec ?? 180) + Math.random() * ((chatter?.maxIntervalSec ?? 360) - (chatter?.minIntervalSec ?? 180)));
   };
-  function say(pet: Companion, text: string, now: number) {
+  function say(pet: Companion, text: string, now: number, pause = true) {
     if (!canChat(pet, now)) return;
     pet.bubble.textContent = text;
     pet.until = now + (chatter?.bubbleSec ?? 7) * 1000;
-    pet.speakingUntil = pet.until;
+    pet.speakingUntil = pause ? pet.until : 0;
     pet.bubble.hidden = false;
   }
   function reactWithLine(pet: Companion, reaction: keyof typeof REACTION_LINES, now: number) {
@@ -166,6 +166,10 @@ async function main(): Promise<void> {
   }
   const canChat = (pet: Companion, now: number) =>
     !resting(pet) && !pet.airborne && !pet.cue && pet.depthWalkElapsed === undefined && held?.pet !== pet && now >= pet.reactionUntil;
+  let pendingSchedule: { text: string; expires: number } | null = null;
+  window.petAPI.onScheduleSpeech((text) => {
+    pendingSchedule = { text, expires: performance.now() + 90_000 };
+  });
   function converse(a: Companion, b: Companion, now: number) {
     if (!chatter || !canChat(a, now) || !canChat(b, now)) return;
     if (!a.species.dialogue?.dialogues.length && b.species.dialogue?.dialogues.length) [a, b] = [b, a];
@@ -659,6 +663,15 @@ async function main(): Promise<void> {
     }
     updateToy(now, delta);
     if (reply && now >= reply.at) { say(reply.pet, reply.text, now); reply = null; }
+    if (pendingSchedule && now >= pendingSchedule.expires) pendingSchedule = null;
+    if (pendingSchedule && !petMenu.isOpen && !reply && !document.hidden) {
+      const speaker = pets.find((pet) => now >= pet.until && canChat(pet, now));
+      if (speaker) {
+        say(speaker, pendingSchedule.text, now, false);
+        pendingSchedule = null;
+        schedule();
+      }
+    }
     if (chatter?.enabled && pets.length && now >= nextChat && !held && !reply) {
       const available = pets.filter((pet) => canChat(pet, now));
       if (available.length > 1 && Math.random() < 0.55) converse(available[0], available[1], now);

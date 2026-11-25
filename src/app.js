@@ -113,7 +113,7 @@ function clipSVG(c, left = 0) {
 const DEFAULTS = {
   character: 'mikang', petName: '', customChar: '', side: 'right',
   modeOverride: 'auto', peek: true, peekDelay: 350,
-  autoOrganize: true, preDeadline: 60, preNormal: 10, morningBrief: true,
+  autoOrganize: true, preDeadline: 60, preNormal: 10, morningBrief: true, petScheduleBrief: true,
   launchAtLogin: true, consentShown: false, weatherCity: '서울',
   proPreview: false,
 };
@@ -298,10 +298,17 @@ function newNote(focus = true, sectionId) {
   return n;
 }
 
-function openPetBookmarks() {
+function togglePetBookmarks() {
+  const closing = !$('#stage').classList.contains('dock-hidden') || modalOpen;
   if (modalKind === 'board') closeBoard();
   else if (viewerKeys) closeViewer();
   else if (modalOpen) closeSettings();
+  if (closing) {
+    dockFolded = true;
+    closePeek(true);
+    closeAll();
+    return;
+  }
   summoned = true;
   dockFolded = false;
   closePeek(true);
@@ -709,6 +716,7 @@ function toast({ title, body, theme, actions = [], ttl = 0 }) {
   return el;
 }
 function remind(n, e, pre) {
+  nextPetBriefAt = Math.max(nextPetBriefAt, Date.now() + 90_000);
   const when = new Date(e.at);
   const title = pre ? `${pre}분 뒤 ${e.deadline ? '마감' : '일정'} · ${e.title}` : `${e.deadline ? '마감 시간이에요' : '지금이에요'} · ${e.title}`;
   const body = `${fmtDate(when)} ${fmtTime(when)} · '${memoTitle(n) || '메모'}' 메모`;
@@ -737,18 +745,59 @@ function tick() {
     if (now - e.at > 6 * 3600000) { e.fired = true; e.missed = true; dirty = true; continue; }
     fire(n, e); dirty = true;
   }
-  morningBrief();
+  void announcePetSchedule(now);
   if (dirty) { save(); renderTabs(); refreshAgenda(); }
 }
-function morningBrief() {
-  if (!S.settings.morningBrief) return;
-  const d = new Date(), key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-  if (S.lastBrief === key || d.getHours() < 7) return;
-  S.lastBrief = key; save();
-  setTimeout(async () => {
-    let w = ''; if (api.weather) { const t = await weatherReply('오늘 날씨').catch(() => ''); if (/°C/.test(t)) w = ' ' + t; }
-    say(`좋은 아침이에요! ${briefing()}${w}`, { ttl: 14000 }); setMood('talk', 3000);
-  }, 1200);
+let nextPetBriefAt = 0;
+let petBriefPending = false;
+async function announcePetSchedule(now) {
+  if (now < nextPetBriefAt || petBriefPending || (api.petScheduleSpeech && !petPresent)) return;
+  const soon = api.petScheduleSpeech && S.settings.petScheduleBrief
+    ? S.notes.flatMap((n) => n.events).filter((e) => e.alarm && !e.done && !e.fired &&
+        e.at - now >= 120_000 && e.at - now <= 30 * 60_000 && e.petBriefedAt !== e.at)
+        .sort((a, b) => a.at - b.at)[0]
+    : null;
+  const date = new Date(now);
+  const day = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  const morning = !soon && S.settings.morningBrief && date.getHours() >= 7 && S.lastBrief !== day;
+  if (!soon && !morning) return;
+  const occurrence = soon?.at;
+  const title = (e) => String(e.title || '일정').slice(0, 36);
+  petBriefPending = true;
+  nextPetBriefAt = now + 120_000;
+  try {
+    let line;
+    if (soon) {
+      const minutes = Math.ceil((soon.at - now) / 60_000);
+      line = `미깡! ‘${title(soon)}’${soon.deadline ? ' 마감' : ''}까지 ${minutes}분 남았어. 슬슬 준비해 볼까?`;
+    } else {
+      const events = todayEvents().filter(({ e }) => e.allDay || e.at > now);
+      const next = events[0]?.e;
+      line = next
+        ? `좋은 아침이야! 오늘 일정 ${events.length}개야. ${next.allDay ? '오늘 종일' : fmtTime(new Date(next.at))} ‘${title(next)}’부터 챙기자!`
+        : '좋은 아침이야! 오늘 남은 일정은 없네. 귤 한 조각처럼 여유롭게 시작하자!';
+      if (api.weather) {
+        const weather = await weatherReply('오늘 날씨').catch(() => '');
+        const temperature = weather.match(/-?\d+°C/);
+        if (temperature) line += ` 지금 바깥은 ${temperature[0]}야.`;
+      }
+    }
+    if (api.petScheduleSpeech) {
+      if (!await api.petScheduleSpeech(line)) {
+        nextPetBriefAt = Date.now() + 5000;
+        return;
+      }
+    } else {
+      say(line, { ttl: 8000 });
+    }
+    if (soon) soon.petBriefedAt = occurrence;
+    else S.lastBrief = day;
+    save();
+  } catch (error) {
+    console.warn('펫 일정 안내를 표시하지 못했어요.', error);
+  } finally {
+    petBriefPending = false;
+  }
 }
 function todayEvents() {
   const t0 = startOfDay(new Date()).getTime(), all = [];
@@ -1311,6 +1360,7 @@ async function openSettings() {
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '마감 미리 알림'), seg('preDeadline', [[0, '없음'], [30, '30분 전'], [60, '1시간 전'], [180, '3시간 전'], [1440, '하루 전']])),
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '일정 미리 알림'), seg('preNormal', [[0, '없음'], [10, '10분 전'], [30, '30분 전'], [60, '1시간 전']])),
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '아침 브리핑'), seg('morningBrief', [[true, '켜기'], [false, '끄기']])),
+      h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '펫 일정 안내'), seg('petScheduleBrief', [[true, '켜기'], [false, '끄기']])),
       h('h4', {}, 'AI 연결'),
       keys.builtin ? builtinAI() : [
         keyRow('anthropic', 'Claude API 키', 'sk-ant-로 시작하는 키 붙여넣기', '메모 정리·사진 속 일정 읽기·부탁하기에 써요. 없으면 기본 규칙으로 정리해요.'),
@@ -1336,6 +1386,29 @@ const overviewSelected = new Set();
 let overviewSelecting = false;
 let overviewQuery = '';
 let overviewPinnedOnly = false;
+let overviewEditing = false;
+const overviewCardLabels = {
+  assistant: '귤비서',
+  schedule: '일정',
+  memos: '메모 모아보기',
+  recording: '녹음',
+  ai: 'AI 정리',
+};
+
+function normalizeOverviewLayout(saved) {
+  const ids = Object.keys(overviewCardLabels);
+  const layout = [];
+  if (Array.isArray(saved)) {
+    for (const item of saved) {
+      if (!item || !ids.includes(item.id) || layout.some((card) => card.id === item.id)) continue;
+      layout.push({ id: item.id, hidden: item.hidden === true });
+    }
+  }
+  for (const id of ids) {
+    if (!layout.some((card) => card.id === id)) layout.push({ id, hidden: false });
+  }
+  return layout;
+}
 
 function openBoard(filter) {
   overviewDay = startOfDay(new Date());
@@ -1354,6 +1427,7 @@ function openBoard(filter) {
   $('.overview-close')?.focus({ preventScroll: true });
 }
 function closeBoard() {
+  overviewEditing = false;
   modalOpen = false; modalKind = '';
   const m = $('#modal'); m.hidden = true; m.classList.remove('boardwrap'); m.replaceChildren(); m.onpointerdown = null;
   $('#stage').classList.remove('overview-open');
@@ -1361,6 +1435,36 @@ function closeBoard() {
   applyMode();
   $('.overview-tab')?.focus({ preventScroll: true });
   updateHit();
+}
+
+function overviewLayoutEditor(layout) {
+  const update = (id, action) => {
+    const index = layout.findIndex((card) => card.id === id);
+    if (action === 'visibility') {
+      layout[index].hidden = !layout[index].hidden;
+    } else {
+      const targetIndex = index + (action === 'up' ? -1 : 1);
+      if (targetIndex < 0 || targetIndex >= layout.length) return;
+      [layout[index], layout[targetIndex]] = [layout[targetIndex], layout[index]];
+    }
+    save();
+    renderBoard();
+    const row = $(`[data-layout-card="${id}"]`);
+    const button = row?.querySelector(`[data-layout-action="${action}"]:not(:disabled)`);
+    (button || row?.querySelector('[data-layout-action="visibility"]'))?.focus({ preventScroll: true });
+  };
+  return h('section', { id: 'overview-layout-editor', class: 'overview-card overview-layout-editor', 'aria-label': '위젯 편집' },
+    h('p', { class: 'overview-muted' }, '위젯 순서를 바꾸거나 숨긴 위젯을 다시 표시할 수 있어요.'),
+    h('ul', {}, layout.map(({ id, hidden }, index) => {
+      const label = overviewCardLabels[id];
+      const control = (action, value, disabled = false) => h('button', {
+        class: 'overview-link', type: 'button', disabled, 'data-layout-action': action,
+        'aria-label': `${label} ${value}`, onclick: () => update(id, action),
+      }, value);
+      return h('li', { 'data-layout-card': id },
+        h('span', {}, label), control('up', '위로', index === 0), control('down', '아래로', index === layout.length - 1),
+        control('visibility', hidden ? '표시' : '숨기기'));
+    })));
 }
 const boardHash = () => S.notes.map((n) => n.id + noteHash(n) + secIdOf(n)).join('|');
 function boardOverview() {
@@ -1514,14 +1618,12 @@ function renderBoard() {
   const avatar = S.settings.character === 'mikang'
     ? h('span', { class: 'overview-avatar prototype-avatar', 'aria-hidden': 'true' })
     : h('span', { class: 'overview-avatar', 'aria-hidden': 'true', html: perchHTML() });
-  const panel = h('div', { class: 'mikkang-overview', role: 'region', 'aria-label': '전체보기' },
-    h('section', { class: 'overview-card overview-assistant' },
+  const cards = {
+    assistant: h('section', { class: 'overview-card overview-assistant' },
       h('header', { class: 'overview-row' },
         avatar,
         h('h2', {}, C.charName(S)),
-        h('button', { class: 'overview-icon', type: 'button', 'aria-label': 'AI 비서', onclick: toggleMenu }, iel('chat', 17)),
-        h('button', { class: 'overview-icon', type: 'button', 'aria-label': '설정', onclick: openSettings }, iel('gear', 18)),
-        h('button', { class: 'overview-icon overview-close', type: 'button', 'aria-label': '위젯 접기', onclick: closeBoard }, iel('x', 18))),
+        h('button', { class: 'overview-icon', type: 'button', 'aria-label': 'AI 비서', onclick: toggleMenu }, iel('chat', 17))),
       h('div', { class: 'overview-brief' }, h('b', {}, '오늘 브리핑'), h('p', {}, briefing())),
       api.petControls ? h('div', { id: 'overview-pet', class: 'overview-pet', role: 'group', 'aria-label': '데스크톱 펫' }) : null,
       h('form', { class: 'overview-quick', onsubmit: (e) => {
@@ -1533,8 +1635,8 @@ function renderBoard() {
         S.notes.unshift(note);
         openNote(note.id);
       } }, quick, h('button', { class: 'overview-icon', type: 'submit', 'aria-label': '메모 추가' }, iel('send', 16)))),
-    overviewSchedule(),
-    h('section', { class: 'overview-card' },
+    schedule: overviewSchedule(),
+    memos: h('section', { class: 'overview-card' },
       h('header', { class: 'overview-row' }, h('h2', {}, '메모 모아보기'),
         h('div', { class: 'overview-list-actions' },
           total ? h('button', { class: 'overview-link overview-selection-toggle', type: 'button', 'aria-pressed': String(overviewSelecting), onclick: () => {
@@ -1561,9 +1663,9 @@ function renderBoard() {
           renderOverviewNotes();
         } }, iel('pin', 14), '고정한 메모')) : null,
       chips, total ? groups : h('p', { class: 'overview-muted' }, '아직 메모가 없어요.')),
-    h('button', { class: 'overview-card overview-record', type: 'button', onclick: () => { closeBoard(); quickRecord(); } },
+    recording: h('button', { class: 'overview-card overview-record', type: 'button', onclick: () => { closeBoard(); quickRecord(); } },
       iel(rec ? 'stop' : 'mic', 19), h('span', {}, rec ? '녹음 중' : '녹음', h('small', {}, `누적 ${audioMinutes}분`))),
-    h('section', { class: 'overview-card overview-ai' },
+    ai: h('section', { class: 'overview-card overview-ai' },
       h('header', { class: 'overview-row' }, h('h2', {}, 'AI 정리'),
         h('button', { id: 'overview-organize', class: 'btn primary', type: 'button', onclick: async () => {
           const notes = [...overviewSelected].map(byId).filter(Boolean);
@@ -1577,7 +1679,22 @@ function renderBoard() {
       h('details', { class: 'overview-summary', open: $('.overview-summary')?.open || false },
         h('summary', {}, '전체 요약'),
         ai ? h('p', { class: 'bsum-ai' }, ai.text) : [h('p', {}, ov.head), h('ul', {}, ov.lines.map((line) => h('li', {}, line)))],
-        h('button', { class: 'btn', type: 'button', onclick: (e) => aiBoardSummary(e.currentTarget) }, iel('sparkle', 14), ai ? '다시 요약' : 'AI 요약'))));
+        h('button', { class: 'btn', type: 'button', onclick: (e) => aiBoardSummary(e.currentTarget) }, iel('sparkle', 14), ai ? '다시 요약' : 'AI 요약'))),
+  };
+  const layout = S.settings.overviewLayout;
+  const visible = layout.filter((card) => !card.hidden);
+  const panel = h('div', { class: 'mikkang-overview', role: 'region', 'aria-label': '전체보기' },
+    h('header', { class: 'overview-toolbar' },
+      h('button', { class: 'btn overview-edit', type: 'button', 'aria-expanded': String(overviewEditing), onclick: () => {
+        overviewEditing = !overviewEditing;
+        renderBoard();
+        $('.overview-edit')?.focus({ preventScroll: true });
+      } }, iel('edit', 14), overviewEditing ? '편집 완료' : '위젯 편집'),
+      h('button', { class: 'overview-icon', type: 'button', 'aria-label': '설정', onclick: openSettings }, iel('gear', 16)),
+      h('button', { class: 'overview-icon overview-close', type: 'button', 'aria-label': '위젯 접기', onclick: closeBoard }, iel('x', 16))),
+    overviewEditing ? overviewLayoutEditor(layout) : null,
+    visible.map(({ id }) => h('div', { class: 'overview-slot', 'data-widget-card': id }, cards[id])),
+    !visible.length && !overviewEditing ? h('p', { class: 'overview-card overview-muted' }, '위젯 편집에서 표시할 항목을 고를 수 있어요.') : null);
   m.replaceChildren(panel);
   renderOverviewNotes();
   panel.scrollTop = previousScroll;
@@ -1610,6 +1727,7 @@ function seed() {
 }
 function normalize(s) {
   s.settings = Object.assign({}, DEFAULTS, s.settings || {});
+  s.settings.overviewLayout = normalizeOverviewLayout(s.settings.overviewLayout);
   if (s.settings.modeOverride === 'pet') s.settings.modeOverride = 'auto';
   // 이전 웹 버전(chaekgalpi-memo-v1) 데이터의 side 값을 이어받는다
   if (s.side && !s._sideMigrated) { s.settings.side = s.side; s._sideMigrated = true; }
@@ -1659,7 +1777,7 @@ function bindGlobal() {
     if (cmd === 'summon') toggleDock();
     else if (cmd === 'board') openBoard();
     else if (cmd === 'new') newNote();
-    else if (cmd === 'pet-bookmarks') openPetBookmarks();
+    else if (cmd === 'pet-bookmarks') togglePetBookmarks();
     else if (cmd === 'assistant') toggleMenu();
     else if (cmd === 'record') quickRecord();
     else if (cmd === 'agenda') toggleAgenda();

@@ -216,6 +216,28 @@
   text-align: left;
 }
 
+.overview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.overview-layout-editor .overview-muted { margin-top: 0; }
+.overview-layout-editor ul { margin: 8px 0 0; padding: 0; list-style: none; }
+.overview-layout-editor li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+  align-items: center;
+  gap: 3px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--mikkang-line);
+  font-size: 12px;
+}
+.overview-layout-editor li:last-child { border-bottom: 0; }
+.overview-layout-editor button:disabled { opacity: .4; cursor: default; }
+.overview-slot > .overview-record { width: 100%; }
+
 .overview-assistant { background: var(--mikkang-sage-light); }
 .overview-pet { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; }
 .overview-pet-choice { display: flex; align-items: center; gap: 5px; font-size: 12px; }

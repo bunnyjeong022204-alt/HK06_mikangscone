@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('api', {
   applySettings: (s) => ipcRenderer.send('settings:apply', s),
   petVisible: (visible) => ipcRenderer.invoke('memo-pet:visible', visible),
   petControls: (action, id) => ipcRenderer.invoke('memo-pet:controls', action, id),
+  petScheduleSpeech: (text) => ipcRenderer.invoke('memo-pet:schedule-speech', text),
   onPetChanged: on('pet-changed'),
   notify: (o) => ipcRenderer.send('notify', o),
   keyStatus: () => ipcRenderer.invoke('keys:status'),

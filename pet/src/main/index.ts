@@ -148,6 +148,11 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
     state: () => ({ present: isPetVisible() && (!rendererReady || visibleSpecies.size > 0), species: speciesOptions() }),
     show,
     importPhoto: (parent: Electron.BrowserWindow) => pickImage(parent, show),
+    speakSchedule(text: string) {
+      if (window.isDestroyed() || !rendererReady || !window.isVisible() || !visibleSpecies.size) return false;
+      window.webContents.send(IPC.SCHEDULE_SPEECH, text);
+      return true;
+    },
   };
 }
 
