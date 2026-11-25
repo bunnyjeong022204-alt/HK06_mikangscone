@@ -8,7 +8,7 @@ interface PersistedSettings {
   petVisible?: boolean;
 }
 
-const DEFAULT_SPECIES_ID = 'black-wizard-cat';
+const DEFAULT_SPECIES_ID = 'mikkang';
 
 /**
  * Small, generalized settings store — starts with just the selected

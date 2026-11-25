@@ -112,7 +112,7 @@ function clipSVG(c, left = 0) {
 /* ─────────── 상태 · 저장 ─────────── */
 const DEFAULTS = {
   character: 'mikang', petName: '', customChar: '', side: 'right',
-  modeOverride: 'auto', petTarget: 'all', peek: true, peekDelay: 350,
+  modeOverride: 'auto', peek: true, peekDelay: 350,
   autoOrganize: true, preDeadline: 60, preNormal: 10, morningBrief: true,
   launchAtLogin: true, consentShown: false, weatherCity: '서울',
   proPreview: false,
@@ -165,8 +165,9 @@ function addSection(name) {
 let openSec = null, addingSec = false, dockFolded = false, modalKind = '';
 function toggleSection(id) { openSec = openSec === id ? null : id; renderTabs(); }
 
-let ctx = 'desktop', fgBrowser = false, forcedMode = null;
+let ctx = 'desktop', forcedMode = null;
 let summoned = false, openId = null, selStk = null, modalOpen = false;
+let petPresent = true;
 let basicDetails = false;
 const hasPremiumMemo = () => info.proPreview === true && S.settings.proPreview === true;
 let bubble = { open: false, menu: false, t: 0 };
@@ -176,21 +177,13 @@ let keys = { anthropic: false, openai: false }, info = { platform: '', demo: fal
 let rec = null, mood = 'idle', moodT = 0;
 let player = null;
 
-/* ─────────── 모드: 바탕화면이면 책갈피, 앱을 쓰면 캐릭터만 ─────────── */
-function petMode() {
-  const o = forcedMode || S.settings.modeOverride;
-  if (o === 'pet') return true;
-  if (o === 'desktop') return false;
-  if (ctx !== 'app') return false;
-  return S.settings.petTarget === 'browser' ? fgBrowser : true;
-}
+/* ─────────── 책갈피와 전체보기 표시 ─────────── */
 function applyMode() {
-  const pm = petMode();
-  const showDock = (!pm && !dockFolded) || summoned || !!openId;
+  const keepDockVisible = (forcedMode || S.settings.modeOverride) === 'desktop' && !dockFolded;
+  const showDock = keepDockVisible || summoned || !!openId || !petPresent;
   const st = $('#stage');
   st.classList.toggle('dock-hidden', !showDock);
-  st.classList.toggle('pet-mode', pm);
-  const bg = $('#demoBg'); if (bg) bg.classList.toggle('desktop', !pm);
+  const bg = $('#demoBg'); if (bg) bg.classList.toggle('desktop', ctx !== 'app');
   if (bubble.open) placeBubble();
   updateHit();
 }
@@ -214,7 +207,8 @@ function renderTabs() {
   dock.append(h('button', {
     class: 'tab overview-tab', type: 'button', 'aria-expanded': String(modalKind === 'board'),
     'aria-controls': 'modal', onclick: () => modalKind === 'board' ? closeBoard() : openBoard(),
-  }, h('span', { class: 'overview-tab-label' }, iel('board', 16), '전체보기')));
+  }, h('span', { class: 'overview-tab-label' }, iel('board', 16),
+    h('span', {}, modalKind === 'board' ? '간단히 보기' : '전체보기'))));
   dock.append(h('button', { class: 'tab add', type: 'button', onclick: () => newNote(true, openSec ?? undefined), 'aria-label': '새 메모 만들기' }, h('span', { class: 'k', style: 'display:flex;align-items:center;gap:5px' }, iel('plus', 15), '새 메모')));
   const secs = [...S.sections]; if (notesIn('').length) secs.push(INBOX);
   for (const x of secs) {
@@ -274,14 +268,13 @@ function closeAll() {
   api.release();
 }
 function toggleNote(id) { if (openId === id) closeAll(); else openNote(id); }
-function openNote(id, { fromPet = false } = {}) {
+function openNote(id) {
   const n = byId(id); if (!n) return;
   if (modalKind === 'board') closeBoard();
   if (openId && openId !== id) commitCurrent();
   if (openId !== id) basicDetails = false;
   closePeek(true); closeBubble();
   openId = n.id; n.ring = false; n.viewedAt = Date.now(); selStk = null; openSec = secIdOf(n);
-  $('#sheet').classList.toggle('from-pet', fromPet);
   renderCard(n); fit();
   $('#sheet').classList.add('open');
   renderTabs(); applyMode(); save();
@@ -297,26 +290,25 @@ function blankNote(sectionId) {
   const sec = sectionId ?? openSec ?? '';
   return { id: uid(), theme: THEMES[idx].id, sectionId: sec, secManual: !!sec, title: '', text: '', keyword: '', kwManual: false, summary: [], events: [], photos: [], stickers: [], audios: [], aiSource: '', createdAt: Date.now(), viewedAt: Date.now(), orgHash: '' };
 }
-function newNote(focus = true, sectionId, options) {
+function newNote(focus = true, sectionId) {
   if (openId) commitCurrent();
   const n = blankNote(sectionId);
-  S.notes.unshift(n); save(); openNote(n.id, options);
+  S.notes.unshift(n); save(); openNote(n.id);
   if (focus) setTimeout(() => { const t = $('#sheet .body'); t && t.focus(); }, 80);
   return n;
 }
 
-function openPetMemo() {
+function openPetBookmarks() {
   if (modalKind === 'board') closeBoard();
   else if (viewerKeys) closeViewer();
   else if (modalOpen) closeSettings();
-  if (!openId || !byId(openId)) {
-    newNote(true, undefined, { fromPet: true });
-    return;
-  }
-  $('#sheet').classList.add('from-pet');
+  summoned = true;
+  dockFolded = false;
+  closePeek(true);
   closeBubble();
+  applyMode();
   api.focus();
-  $('#sheet .body')?.focus();
+  $('.overview-tab')?.focus({ preventScroll: true });
 }
 
 /* ─────────── 메모지 카드 ─────────── */
@@ -1051,11 +1043,12 @@ function setMood(m, ttl = 0) {
 }
 function toggleDock() {
   if (rec && rec.kind === 'command') { stopRecording(); return; }
+  if (modalKind === 'board') { closeBoard(); return; }
   const shown = !$('#stage').classList.contains('dock-hidden');
   if (shown) {
     if (openId || bubble.open) closeAll();
-    summoned = false; dockFolded = !petMode();
-  } else { dockFolded = false; summoned = petMode(); }
+    summoned = false; dockFolded = true;
+  } else { dockFolded = false; summoned = true; }
   applyMode(); renderTabs(); setMood('talk', 700);
 }
 function toggleMenu() {
@@ -1292,9 +1285,10 @@ async function openSettings() {
       h('div', { class: 'row' }, h('label', {}, '이름'), h('input', { type: 'text', maxlength: '8', value: st.petName, placeholder: (C.CHARS[st.character] || C.CHARS.mikang).name, oninput: (e) => { st.petName = e.target.value; save(); } })),
       h('h4', {}, '화면'),
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '책갈피 위치'), seg('side', [['left', '왼쪽'], ['right', '오른쪽']], applySide)),
-      h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '표시 방식'), seg('modeOverride', [['auto', '자동'], ['desktop', '항상 책갈피'], ['pet', '항상 캐릭터만']], () => { api.applySettings({ modeOverride: st.modeOverride }); applyMode(); })),
-      h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '캐릭터만 남길 때'), seg('petTarget', [['all', '바탕화면이 아니면 항상'], ['browser', '웹 브라우저를 쓸 때만']], applyMode)),
-      h('p', { class: 'note' }, '자동: 바탕화면에서는 책갈피가 펼쳐지고, 다른 앱을 쓰는 동안에는 접혀요. 움직이는 펫을 우클릭하면 메모가 열려요.'),
+      h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '표시 방식'), seg('modeOverride', [['auto', '펫에서 열기'], ['desktop', '책갈피 표시']], () => {
+        dockFolded = false; api.applySettings({ modeOverride: st.modeOverride }); applyMode();
+      })),
+      h('p', { class: 'note' }, '움직이는 펫을 우클릭하면 책갈피가 열려요.'),
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '가장자리 미리보기'), seg('peek', [[true, '켜기'], [false, '끄기']]), seg('peekDelay', [[200, '빠르게'], [350, '보통'], [600, '천천히']])),
       api.petVisible ? h('div', { class: 'row' }, h('label', {}, '움직이는 데스크톱 펫'),
         h('button', { type: 'button', class: 'btn', role: 'switch', 'aria-label': '움직이는 데스크톱 펫', 'aria-checked': String(petVisible === true), onclick: async () => {
@@ -1348,9 +1342,11 @@ function openBoard(filter) {
   if (filter !== undefined) boardFilter = filter;
   if (boardFilter !== 'all' && boardFilter !== '' && !secById(boardFilter)) boardFilter = 'all';
   modalOpen = true; modalKind = 'board'; updateHit(); api.focus();
+  summoned = true;
   const m = $('#modal'); m.hidden = false; m.classList.add('boardwrap');
   $('#stage').classList.add('overview-open');
-  $('.overview-tab')?.setAttribute('aria-expanded', 'true');
+  renderTabs();
+  applyMode();
   renderBoard();
   updateHit();
   $('.overview-close')?.focus({ preventScroll: true });
@@ -1359,7 +1355,8 @@ function closeBoard() {
   modalOpen = false; modalKind = '';
   const m = $('#modal'); m.hidden = true; m.classList.remove('boardwrap'); m.replaceChildren(); m.onpointerdown = null;
   $('#stage').classList.remove('overview-open');
-  $('.overview-tab')?.setAttribute('aria-expanded', 'false');
+  renderTabs();
+  applyMode();
   $('.overview-tab')?.focus({ preventScroll: true });
   updateHit();
 }
@@ -1435,11 +1432,16 @@ function overviewSchedule() {
 
 async function refreshPetControls(action, value) {
   const target = $('#overview-pet');
-  if (!target || !api.petControls) return;
+  if (!api.petControls) return;
   let state;
   try { state = await api.petControls(action, value); }
   catch { toast({ title: '펫을 불러오지 못했어요', ttl: 3500 }); return; }
-  if (!state || !target.isConnected) return;
+  if (!state) return;
+  if (petPresent !== state.present) {
+    petPresent = state.present;
+    applyMode();
+  }
+  if (!target?.isConnected) return;
   const species = state.species;
   const select = h('select', { 'aria-label': '펫 바꾸기', onchange: (e) => refreshPetControls('show', e.target.value) },
     h('option', { value: '', disabled: true, selected: !species.some((item) => item.selected) }, '펫 바꾸기'),
@@ -1559,6 +1561,7 @@ function seed() {
 }
 function normalize(s) {
   s.settings = Object.assign({}, DEFAULTS, s.settings || {});
+  if (s.settings.modeOverride === 'pet') s.settings.modeOverride = 'auto';
   // 이전 웹 버전(chaekgalpi-memo-v1) 데이터의 side 값을 이어받는다
   if (s.side && !s._sideMigrated) { s.settings.side = s.side; s._sideMigrated = true; }
   if (!Array.isArray(s.sections)) s.sections = DEFAULT_SECTIONS();
@@ -1575,13 +1578,9 @@ function bindGlobal() {
   document.addEventListener('mousemove', (e) => { cursor = { x: e.clientX, y: e.clientY, edge: cursor.edge, on: true }; updateHit(); });
   api.onForeground((f) => {
     if (f.kind === 'self') return;
-    const wasPet = petMode();
-    if (f.kind !== 'app') dockFolded = false;
-    ctx = f.kind === 'app' ? 'app' : 'desktop'; fgBrowser = !!f.browser;
-    // 펫에서 연 메모는 다른 앱을 보면서도 계속 편집할 수 있다.
-    const petMemoOpen = openId && $('#sheet').classList.contains('from-pet');
-    if (!petMemoOpen && (openId || summoned || (bubble.open && bubble.menu)) && !modalOpen) closeAll();
-    if (wasPet !== petMode()) applyMode();
+    ctx = f.kind === 'app' ? 'app' : 'desktop';
+    if ((openId || (bubble.open && bubble.menu)) && !modalOpen) closeAll();
+    applyMode();
   });
   // 사진 파일을 화면 어디에 놓아도 메모에 들어간다 (열린 메모가 없으면 새 메모)
   let dragN = 0;
@@ -1611,12 +1610,12 @@ function bindGlobal() {
     if (cmd === 'summon') toggleDock();
     else if (cmd === 'board') openBoard();
     else if (cmd === 'new') newNote();
-    else if (cmd === 'pet-memo') openPetMemo();
+    else if (cmd === 'pet-bookmarks') openPetBookmarks();
     else if (cmd === 'assistant') toggleMenu();
     else if (cmd === 'record') quickRecord();
     else if (cmd === 'agenda') toggleAgenda();
     else if (cmd === 'settings') openSettings();
-    else if (cmd.startsWith('mode:')) { S.settings.modeOverride = cmd.slice(5); forcedMode = null; save(); applyMode(); }
+    else if (cmd.startsWith('mode:')) { S.settings.modeOverride = cmd.slice(5); dockFolded = false; forcedMode = null; save(); applyMode(); }
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
@@ -1641,9 +1640,9 @@ async function boot() {
   bindGlobal();
   applySide(); renderTabs(); fit(); applyMode();
   if (info.args?.includes('--overview')) openBoard();
+  else void refreshPetControls();
   save();
   tick(); setInterval(tick, 5000);
-  if (!loaded) setTimeout(() => say(`안녕하세요, ${C.charName(S)}예요! '전체보기'에서 메모를 확인하거나 AI 비서에게 날씨나 부탁을 물어보세요.`, { ttl: 14000 }), 800);
   // 디버그/스크린샷용 훅
   window.__mk = { S: () => S, openNote, newNote, toggleDock, openPeek, openSettings, toggleAgenda, say, closeAll, askAssistant, setMood, applyMode, openBoard, closeBoard, toggleSection, toggleMenu, setCtx: (c) => { ctx = c; applyMode(); } };
 }

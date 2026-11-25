@@ -115,7 +115,7 @@ function buildTrayMenu() {
     { label: 'AI 비서', click: () => send('cmd', 'assistant') },
     { label: '데스크톱 펫 표시', type: 'checkbox', checked: pet.isPetVisible(), click: (item) => pet.setPetVisible(item.checked) },
     { type: 'separator' },
-    { label: '화면 모드', submenu: [mode('auto', '자동 (바탕화면이면 책갈피, 앱을 쓰면 캐릭터만)'), mode('desktop', '항상 책갈피'), mode('pet', '항상 캐릭터만')] },
+    { label: '화면 모드', submenu: [mode('auto', '펫에서 열기'), mode('desktop', '책갈피 표시')] },
     { label: '설정…', click: () => send('cmd', 'settings') },
     { label: '데이터 폴더 열기', click: () => shell.openPath(store.dir()) },
     { type: 'separator' },
@@ -229,7 +229,7 @@ app.whenReady().then(() => {
   petControls = pet.startPet(() => {
     if (tray) buildTrayMenu();
     send('pet-changed');
-  }, () => send('cmd', 'pet-memo'));
+  }, () => send('cmd', 'pet-bookmarks'));
   createOverlay();
   createTray();
   registerShortcuts();

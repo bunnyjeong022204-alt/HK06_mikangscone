@@ -16,7 +16,7 @@ const petAPI: PetAPI = {
   },
   getPetMenuSpecies() { return ipcRenderer.invoke(IPC.PET_MENU_SPECIES); },
   runPetMenuAction(action) { ipcRenderer.send(IPC.PET_MENU_ACTION, action); },
-  openMemo() { ipcRenderer.send(IPC.OPEN_MEMO); },
+  openBookmarks() { ipcRenderer.send(IPC.OPEN_BOOKMARKS); },
   getCursorPoint() { return ipcRenderer.invoke(IPC.CURSOR_POINT); },
   setClickThrough(ignore: boolean) {
     ipcRenderer.send(IPC.SET_CLICK_THROUGH, ignore);

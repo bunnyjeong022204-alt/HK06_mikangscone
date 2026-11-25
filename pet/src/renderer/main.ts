@@ -336,7 +336,7 @@ async function main(): Promise<void> {
       petMenu.open(pointer, hasToy(pet), toyEnabled);
     } else {
       petMenu.close();
-      window.petAPI.openMemo();
+      window.petAPI.openBookmarks();
     }
   });
   window.addEventListener('blur', release);

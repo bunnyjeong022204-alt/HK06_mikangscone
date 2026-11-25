@@ -73,7 +73,7 @@ function watchActiveSpecies(speciesId: string, publish: (scene: SpeciesConfig) =
   unwatchSpecies = () => { watcher.close(); unwatchers.forEach((stop) => stop()); };
 }
 
-export function startPet(notifyVisibilityChange: () => void, openMemo: () => void) {
+export function startPet(notifyVisibilityChange: () => void, openBookmarks: () => void) {
   onVisibilityChange = notifyVisibilityChange;
   registerAssetProtocolHandler();
   ensureLocalSpeciesRoot();
@@ -87,6 +87,7 @@ export function startPet(notifyVisibilityChange: () => void, openMemo: () => voi
   let activeSpecies = process.env.PET_SPECIES_ID ?? appSettings.getSelectedSpeciesId();
   const dismissed = new Set(appSettings.getDismissedSpeciesIds());
   let visibleSpecies = new Set<string>();
+  let rendererReady = false;
   const publish = (scene: SpeciesConfig) => {
     visibleSpecies = new Set([scene, ...(scene.companions ?? [])].map(({ id }) => id).filter((id) => !dismissed.has(id)));
     sendSpeciesLoaded(window, { ...scene, dismissedIds: [...dismissed] });
@@ -126,12 +127,13 @@ export function startPet(notifyVisibilityChange: () => void, openMemo: () => voi
       void runPetMenuAction(window, action, selectPet, dismissPet, () => setPetVisible(false));
     }
   });
-  ipcMain.on(IPC.OPEN_MEMO, (event) => {
-    if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents) openMemo();
+  ipcMain.on(IPC.OPEN_BOOKMARKS, (event) => {
+    if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents) openBookmarks();
   });
 
   ipcMain.on(IPC.RENDERER_READY, (event) => {
     if (event.sender !== window.webContents) return;
+    rendererReady = true;
     publish(loadCompanionScene(loadSpeciesWithFallback(activeSpecies)));
     watchActiveSpecies(activeSpecies, publish);
   });
@@ -143,7 +145,7 @@ export function startPet(notifyVisibilityChange: () => void, openMemo: () => voi
     setPetVisible(true);
   };
   return {
-    state: () => ({ present: isPetVisible() && visibleSpecies.size > 0, species: speciesOptions() }),
+    state: () => ({ present: isPetVisible() && (!rendererReady || visibleSpecies.size > 0), species: speciesOptions() }),
     show,
     importPhoto: (parent: Electron.BrowserWindow) => pickImage(parent, show),
   };
