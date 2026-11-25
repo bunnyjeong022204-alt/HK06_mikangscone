@@ -13,6 +13,8 @@ export class AnimationController {
   private elapsedMs = 0;
   private totalElapsedMs = 0;
 
+  get currentFrameIndex(): number { return this.frameIndex; }
+
   /**
    * Always resets to frame 0, even if `def` is the same object reference as
    * before — this is only ever called from a real PetStateMachine

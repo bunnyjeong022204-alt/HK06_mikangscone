@@ -3,7 +3,7 @@ import type { PetState } from './petState';
 export type PetMotion = 'fly' | 'wallImpact' | 'wallFall' | 'petBump' | 'land' | 'ouch' | 'recover' |
   'wake' | 'doze' | 'curious' | 'peek' | 'slip' | 'look' | 'startle' | 'meet' | 'jump' | 'climb' |
   'toyWatch' | 'toyPounce' | 'toyLand' | 'toyAfter' | 'toyRod' | 'toyRodHit' | 'sideIdle' | 'wallIdle' | 'wallFront' |
-  'frontWalk' | 'backWalk';
+  'frontWalk' | 'backWalk' | 'fireBreath';
 export type PetPersonality = 'relaxed' | 'cautious' | 'curious';
 
 /**
@@ -35,6 +35,8 @@ export interface SpeciesAnimationDef {
 export interface SpeciesBehaviorDef {
   personality?: PetPersonality;
   doubleClick?: 'fire' | 'chase' | 'ink' | 'hearts';
+  /** Mouth position in the right-facing frame, with the first open frame index. */
+  fireMouth?: { x: number; y: number; frame: number };
   walkSpeedPxPerSec: number;
   idleMinMs: number;
   idleMaxMs: number;

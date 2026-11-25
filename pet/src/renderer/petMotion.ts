@@ -24,6 +24,7 @@ const durations: Record<PetMotion, number> = {
   peek: 640, slip: 430, look: 460, startle: 320, meet: 660,
   jump: Infinity, climb: Infinity,
   sideIdle: Infinity, wallIdle: Infinity, wallFront: Infinity, frontWalk: Infinity, backWalk: Infinity,
+  fireBreath: 660,
   toyWatch: 430, toyPounce: 460, toyLand: 330, toyAfter: 620, toyRod: Infinity, toyRodHit: 420,
 };
 

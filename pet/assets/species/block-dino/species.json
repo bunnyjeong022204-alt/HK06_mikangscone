@@ -61,6 +61,7 @@
   },
   "behavior": {
     "doubleClick": "fire",
+    "fireMouth": { "x": 0.77, "y": 0.63, "frame": 1 },
     "walkSpeedPxPerSec": 45,
     "idleMinMs": 1800,
     "idleMaxMs": 3700,
@@ -73,6 +74,15 @@
     "license": "User-provided project artwork"
   },
   "motions": {
+    "fireBreath": {
+      "sheet": "sprites/fireBreath.svg",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 12,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
     "jump": {
       "sheet": "sprites/jump.png",
       "frameWidth": 192,

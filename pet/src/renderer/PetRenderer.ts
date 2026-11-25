@@ -34,6 +34,12 @@ export class PetRenderer {
     return img;
   }
 
+  preload(definition?: SpeciesAnimationDef): void {
+    if (!definition) return;
+    this.getImage(definition.sheet);
+    if (definition.leftSheet) this.getImage(definition.leftSheet);
+  }
+
   /**
    * Drops all cached Image elements. Call when a species (re)loads —
    * without this, editing a local species' sprite file while the app is
