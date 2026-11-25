@@ -86,7 +86,10 @@ async function main(): Promise<void> {
     const phase = walk.elapsed / walk.legMs;
     const progress = Math.min(phase, 2 - phase);
     const height = floor * SIDE_WALK_HEIGHT_RATIO;
-    return { x: floorX(walk.side < 0 ? 0 : bounds.width, size), y: floor - height * progress };
+    const climb = height * progress * progress * (3 - 2 * progress);
+    const corner = Math.min(1, climb / 30);
+    const inset = 10 * corner * corner * (3 - 2 * corner);
+    return { x: floorX(walk.side < 0 ? inset : bounds.width - size - inset, size), y: floor - climb };
   };
   let pets: Companion[] = [];
   let sceneReady = false;
@@ -218,8 +221,10 @@ async function main(): Promise<void> {
       const state = new PetStateMachine();
       const animation = new AnimationController();
       const size = species.animations.idle?.displaySize ?? (species.animations.idle?.frameWidth ?? 475) * species.behavior.spriteScale;
-      const behavior = new BehaviorController(state, species.behavior,
-        { x: floorX(bounds.width * 0.25 + index * 160, size), y: 0 }, () => ['idle', 'sit', 'sleep']);
+      const x = floorX(bounds.width * 0.25 + index * 160, size);
+      const patrolDirection = species.motions?.frontWalk && species.motions.backWalk ?
+        (x > (bounds.width - size) / 2 ? 1 : -1) : undefined;
+      const behavior = new BehaviorController(state, species.behavior, { x, y: 0 }, () => ['idle', 'sit', 'sleep'], patrolDirection);
       const bubble = document.createElement('div');
       bubble.className = 'speech'; bubble.hidden = true; document.body.append(bubble);
       const initialAnimation = animationFor(species, state.getState());
@@ -625,7 +630,7 @@ async function main(): Promise<void> {
     renderer.render(toyProp, frame, { x: toyPointer.x - size * 0.91, y: toyPointer.y - size * 0.92 }, cat.species.behavior.spriteScale);
   }
 
-  function cueForMovement(pet: Companion, now: number, before: Vec2, after: Vec2, previousState: PetState) {
+  function cueForMovement(pet: Companion, now: number, after: Vec2, previousState: PetState, reachedSide: -1 | 1 | undefined) {
     const state = pet.state.getState();
     const personality = personalityOf(pet.species);
     const size = petSize(pet);
@@ -640,16 +645,11 @@ async function main(): Promise<void> {
       cue(pet, 'wake', now, side);
       return;
     }
-    if (state === 'walk' && onFloor && !toyEnabled &&
+    if (reachedSide && state === 'walk' && onFloor && !toyEnabled &&
         pet.species.motions?.frontWalk && pet.species.motions.backWalk && after.y >= 32) {
-      const right = Math.max(0, bounds.width - size);
-      const reachedSide = after.x === 0 && before.x > 0 ? -1 :
-        after.x === right && before.x < right ? 1 : undefined;
-      if (reachedSide) {
-        const speed = Math.max(25, pet.species.behavior.walkSpeedPxPerSec);
-        pet.sideWalk = { side: reachedSide, elapsed: 0, legMs: after.y * SIDE_WALK_HEIGHT_RATIO / speed * 1000 };
-        return;
-      }
+      const speed = Math.max(25, pet.species.behavior.walkSpeedPxPerSec);
+      pet.sideWalk = { side: reachedSide, elapsed: 0, legMs: after.y * SIDE_WALK_HEIGHT_RATIO / speed * 1000 };
+      return;
     }
     const distance = Math.hypot(pointer.x - after.x - size / 2, pointer.y - after.y - size / 2);
     const closer = Number.isFinite(pet.pointerDistance) ? pet.pointerDistance - distance : 0;
@@ -776,8 +776,8 @@ async function main(): Promise<void> {
       } else if (playWithToy(pet, now, delta)) { /* Toy pose drives position while active. */ }
       else if (held?.pet !== pet && !pet.cue && now >= pet.speakingUntil) {
         const size = petSize(pet);
-        pet.behavior.update(delta, { x: 0, y: 0, width: Math.max(bounds.width, size), height: bounds.height }, size);
-        cueForMovement(pet, now, before, petPosition(pet), previousState);
+        const reachedSide = pet.behavior.update(delta, { x: 0, y: 0, width: Math.max(bounds.width, size), height: bounds.height }, size);
+        cueForMovement(pet, now, petPosition(pet), previousState, reachedSide);
       }
       const after = petPosition(pet);
       const dx = after.x - before.x;

@@ -68,6 +68,28 @@ describe('BehaviorController', () => {
     expect(controller.getPosition().x).toBe(90); // bounds.width - spriteWidth
   });
 
+  it('keeps heading toward an edge across pauses and reports both sides', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.9);
+    const sm = new PetStateMachine();
+    const controller = new BehaviorController(sm, makeBehavior({ walkMinMs: 200, walkMaxMs: 200 }),
+      { x: 45, y: 0 }, () => ['idle'], -1);
+
+    controller.update(1, bounds, spriteWidth);
+    expect(controller.update(200, bounds, spriteWidth)).toBeUndefined();
+    expect(sm.getState()).toBe('idle');
+    expect(controller.getPosition().x).toBe(25);
+    controller.update(1, bounds, spriteWidth);
+    controller.update(200, bounds, spriteWidth);
+    expect(controller.getPosition().x).toBe(5);
+    controller.update(1, bounds, spriteWidth);
+    expect(controller.update(200, bounds, spriteWidth)).toBe(-1);
+    expect(sm.getState()).toBe('walk');
+    expect(controller.update(1, bounds, spriteWidth)).toBeUndefined();
+    controller.update(1, bounds, spriteWidth);
+    expect(controller.update(900, bounds, spriteWidth)).toBe(1);
+    expect(controller.getPosition().x).toBe(90);
+  });
+
   it('does not move while dragged, even with a large deltaMs', () => {
     const sm = new PetStateMachine();
     const controller = new BehaviorController(sm, makeBehavior(), { x: 50, y: 50 });

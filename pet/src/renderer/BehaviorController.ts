@@ -28,8 +28,10 @@ export class BehaviorController {
     private behavior: SpeciesBehaviorDef,
     startPosition: Vec2,
     private getUnlockedIdleVariants: (position: Vec2) => PetState[] = () => ['idle'],
+    private readonly initialPatrolDirection?: -1 | 1,
   ) {
     this.position = { ...startPosition };
+    this.direction = initialPatrolDirection ?? 1;
     this.beginIdlePhase();
   }
 
@@ -69,18 +71,19 @@ export class BehaviorController {
 
   private beginWalkPhase(): void {
     this.phaseRemainingMs = randomBetween(this.behavior.walkMinMs, this.behavior.walkMaxMs);
-    this.direction = Math.random() < 0.5 ? -1 : 1;
+    if (this.initialPatrolDirection === undefined) this.direction = Math.random() < 0.5 ? -1 : 1;
     this.stateMachine.transition('idle');
     this.stateMachine.transition('walk');
   }
 
-  /** Call once per frame while not being dragged or reacting. */
-  update(deltaMs: number, bounds: Rect, spriteWidth: number): void {
+  /** Advances the idle/walk cycle, returning the side reached on this frame. */
+  update(deltaMs: number, bounds: Rect, spriteWidth: number): -1 | 1 | undefined {
     const state = this.stateMachine.getState();
     const isIdleLike = IDLE_LIKE.includes(state);
     if (!isIdleLike && state !== 'walk') return;
 
     this.phaseRemainingMs -= deltaMs;
+    let reachedSide: -1 | 1 | undefined;
 
     if (state === 'walk') {
       const deltaPx = this.behavior.walkSpeedPxPerSec * (deltaMs / 1000) * this.direction;
@@ -91,17 +94,20 @@ export class BehaviorController {
       if (nextX <= minX) {
         nextX = minX;
         this.direction = 1;
+        if (maxX > minX && deltaPx < 0) reachedSide = -1;
       } else if (nextX >= maxX) {
         nextX = maxX;
         this.direction = -1;
+        if (maxX > minX && deltaPx > 0) reachedSide = 1;
       }
       this.position = { ...this.position, x: nextX };
     }
 
-    if (this.phaseRemainingMs <= 0) {
+    if (this.phaseRemainingMs <= 0 && !(reachedSide && this.initialPatrolDirection !== undefined)) {
       if (isIdleLike) this.beginWalkPhase();
       else this.beginIdlePhase();
     }
+    return reachedSide;
   }
 
   /** Called when a drag interaction begins; halts autonomous movement. */
