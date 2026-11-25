@@ -1088,7 +1088,9 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card :is(.paper, .backing, .clip, .orn) { display: none; }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet:not(.basic-note) .card .content {
-  padding: var(--mono-inset-top) var(--mono-inset-inline) var(--mono-inset-bottom);
+  inset: var(--mono-inset-top) var(--mono-inset-inline) var(--mono-inset-bottom);
+  padding: 0;
+  overflow: auto;
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .basic-note-head {
   margin: var(--mono-inset-top) var(--mono-inset-inline) 0;
@@ -1097,7 +1099,8 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   background: transparent;
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .basic-note .card .content {
-  padding: 7px var(--mono-inset-inline);
+  margin-inline: var(--mono-inset-inline);
+  padding: 7px 0;
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card .chips { flex: none; padding-inline: 0; }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card .chip { max-width: 100%; }
