@@ -34,14 +34,37 @@ interface Companion {
   nextLookAt: number;
   pointerDistance: number;
   reactionUntil: number;
-  sideWalk?: { side: -1 | 1; elapsed: number; legMs: number };
+  sideWalk?: SideWalk;
   chasing?: boolean;
   nextBurstAt?: number;
   firePending?: boolean;
   toyPlay?: { origin: Vec2; position: Vec2; strike: Vec2; aim: Vec2; side: -1 | 1; hit: boolean };
 }
 
+interface SideWalk {
+  side: -1 | 1;
+  elapsed: number;
+  legMs: number;
+}
+
 const SIDE_WALK_HEIGHT_RATIO = 0.45;
+
+function sideWalkProgress(walk: SideWalk) {
+  const phase = walk.elapsed / walk.legMs;
+  const progress = Math.min(phase, 2 - phase);
+  return progress * progress * (3 - 2 * progress);
+}
+
+function sideWalkScale(pet: Companion, progress: number) {
+  return 1 - (pet.species.behavior.sideWalkDepth ?? 0) * progress;
+}
+
+function currentPose(pet: Companion, now: number) {
+  if (pet.cue) return poseFor(pet.cue, now, pet.species);
+  if (!pet.sideWalk) return undefined;
+  const scale = sideWalkScale(pet, sideWalkProgress(pet.sideWalk));
+  return scale === 1 ? undefined : { tilt: 0, scaleX: scale, scaleY: scale, lift: 0, wall: pet.sideWalk.side };
+}
 const HOVER_EXIT_PADDING = 5;
 
 const REACTION_LINES = {
@@ -83,16 +106,15 @@ async function main(): Promise<void> {
     const floor = Math.max(0, bounds.height - size);
     const walk = pet.sideWalk;
     if (!walk) return { x: floorX(pet.behavior.getPosition().x, size), y: floor };
-    const phase = walk.elapsed / walk.legMs;
-    const progress = Math.min(phase, 2 - phase);
-    const height = floor * SIDE_WALK_HEIGHT_RATIO;
-    const climb = height * progress * progress * (3 - 2 * progress);
+    const progress = sideWalkProgress(walk);
+    const climb = floor * SIDE_WALK_HEIGHT_RATIO * progress;
     const corner = Math.min(1, climb / 30);
     const sideInsets = pet.species.behavior.sideWalkInsets;
     const margin = (walk.side < 0 ? sideInsets?.left : sideInsets?.right) ?? 0;
     const right = Math.max(0, bounds.width - size);
     const offset = right > 0 && !pet.cue
-      ? Math.max(0, margin * pet.species.behavior.spriteScale - 2) * corner * corner * (3 - 2 * corner) : 0;
+      ? Math.max(0, margin * pet.species.behavior.spriteScale * sideWalkScale(pet, progress) - 2) *
+        corner * corner * (3 - 2 * corner) : 0;
     return { x: walk.side < 0 ? -offset : right + offset, y: floor - climb };
   };
   let pets: Companion[] = [];
@@ -261,7 +283,7 @@ async function main(): Promise<void> {
     const def = pet.clip;
     if (!def) return false;
     const frame = pet.animation.getCurrentFrameRect(pet.facing);
-    const pose = pet.cue && poseFor(pet.cue, previous, pet.species);
+    const pose = currentPose(pet, previous);
     const pos = petPosition(pet);
     const scale = pet.species.behavior.spriteScale;
     const box = pose && frame ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize(pet)) : renderer.getSpriteBounds(def, pos, scale);
@@ -807,7 +829,7 @@ async function main(): Promise<void> {
       } else pet.animation.update(held?.pet === pet && held.dragging ? delta * 0.48 : delta);
       if (!pet.cue && pet.state.getState() === 'react' && pet.animation.isFinished()) pet.behavior.endReaction();
       const frame = pet.animation.getCurrentFrameRect(pet.facing);
-      const pose = pet.cue && poseFor(pet.cue, now, pet.species);
+      const pose = currentPose(pet, now);
       const leftSheet = pet.facing >= 5 ? def.leftSheet : undefined;
       const mirror = !leftSheet && (def.mirrorWhen === 'left' ? pet.facing >= 5 : def.mirrorWhen === 'right' && pet.cue?.side === 1);
       const view = leftSheet ? { ...def, sheet: leftSheet } : def;

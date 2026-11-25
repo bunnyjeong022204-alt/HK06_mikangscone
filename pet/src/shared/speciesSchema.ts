@@ -39,6 +39,8 @@ export interface SpeciesBehaviorDef {
   fireMouth?: { x: number; y: number; frame: number };
   /** Smallest transparent margin on each side across both edge-walk sheets, in source pixels. */
   sideWalkInsets?: { left: number; right: number };
+  /** Fraction of the sprite scale lost at the far end of an edge walk. */
+  sideWalkDepth?: number;
   walkSpeedPxPerSec: number;
   idleMinMs: number;
   idleMaxMs: number;

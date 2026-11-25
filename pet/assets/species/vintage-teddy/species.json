@@ -146,6 +146,7 @@
   "behavior": {
     "doubleClick": "hearts",
     "sideWalkInsets": { "left": 50, "right": 51 },
+    "sideWalkDepth": 0.16,
     "walkSpeedPxPerSec": 47,
     "idleMinMs": 1800,
     "idleMaxMs": 4100,

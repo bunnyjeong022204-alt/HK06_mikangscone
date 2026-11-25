@@ -50,6 +50,7 @@
   "behavior": {
     "doubleClick": "ink",
     "sideWalkInsets": { "left": 15, "right": 14 },
+    "sideWalkDepth": 0.16,
     "walkSpeedPxPerSec": 45,
     "idleMinMs": 1800,
     "idleMaxMs": 3700,
