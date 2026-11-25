@@ -57,7 +57,7 @@ jobs:
             $repeat = Start-Process -FilePath $exe -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
             if (!$repeat.WaitForExit(45000)) { throw 'Second launch did not return to the running app' }
             if ($launcher.HasExited) { throw 'Second launch closed the running app' }
-            foreach ($id in @('mikkang', 'assistant-cat', 'assistant-bunny', 'assistant-cloud', 'mono-cat', 'pastel-octopus', 'vintage-teddy', 'block-dino')) {
+            foreach ($id in @('mikkang', 'mono-cat', 'pastel-octopus', 'vintage-teddy', 'block-dino')) {
               $folder = Join-Path $pets $id
               $species = Get-Content -Raw -LiteralPath (Join-Path $folder 'species.json') | ConvertFrom-Json
               if ($species.id -ne $id -or !(Test-Path -LiteralPath (Join-Path $folder $species.animations.idle.sheet))) {

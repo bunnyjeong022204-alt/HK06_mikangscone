@@ -1862,6 +1862,9 @@ function seed() {
 }
 function normalize(s) {
   s.settings = Object.assign({}, DEFAULTS, s.settings || {});
+  if (s.settings.character !== 'custom' && !Object.hasOwn(C.CHARS, s.settings.character)) {
+    s.settings.character = DEFAULTS.character;
+  }
   s.settings.overviewLayout = normalizeOverviewLayout(s.settings.overviewLayout);
   if (s.settings.modeOverride === 'pet') s.settings.modeOverride = 'auto';
   // 이전 웹 버전(chaekgalpi-memo-v1) 데이터의 side 값을 이어받는다

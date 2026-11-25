@@ -18,6 +18,7 @@ import { IPC } from '../shared/ipcContract';
 import { saveImagePet, runPetMenuAction } from './petMenu';
 import type { SpeciesConfig } from '../shared/speciesSchema';
 
+const DEFAULT_SPECIES_ID = 'mikkang';
 const FALLBACK_SPECIES_ID = 'placeholder';
 
 registerAssetProtocolScheme();
@@ -36,12 +37,14 @@ let onVisibilityChange: (() => void) | undefined;
  * mid-save.
  */
 function loadSpeciesWithFallback(id: string) {
-  try {
-    return loadSpecies(id);
-  } catch (error) {
-    console.error(`Failed to load species "${id}", falling back to "${FALLBACK_SPECIES_ID}":`, error);
-    return loadSpecies(FALLBACK_SPECIES_ID);
+  for (const candidate of new Set([id, DEFAULT_SPECIES_ID])) {
+    try {
+      return loadSpecies(candidate);
+    } catch (error) {
+      console.warn(`Unable to load pet "${candidate}":`, error);
+    }
   }
+  return loadSpecies(FALLBACK_SPECIES_ID);
 }
 
 /**
@@ -134,6 +137,7 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
   ipcMain.on(IPC.RENDERER_READY, (event) => {
     if (event.sender !== window.webContents) return;
     const scene = loadCompanionScene(loadSpeciesWithFallback(activeSpecies));
+    if (activeSpecies !== scene.id) appSettings.setSelectedSpeciesId(scene.id);
     activeSpecies = scene.id;
     if ([scene, ...(scene.companions ?? [])].every(({ id }) => dismissed.has(id))) {
       dismissed.delete(scene.id);
@@ -145,7 +149,8 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
   const show = (id?: string) => {
     const species = speciesOptions();
     if (id && !species.some((item) => item.id === id)) return;
-    const next = id ?? species.find((item) => item.id === activeSpecies)?.id ?? FALLBACK_SPECIES_ID;
+    const next = id ?? species.find((item) => item.id === activeSpecies)?.id ??
+      species.find((item) => item.id === DEFAULT_SPECIES_ID)?.id ?? FALLBACK_SPECIES_ID;
     if (id || !visibleSpecies.size) selectPet(next);
     setPetVisible(true);
   };
