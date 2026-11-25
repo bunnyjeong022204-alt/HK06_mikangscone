@@ -1,4 +1,4 @@
-# Windows(.exe 설치 파일)와 macOS(.dmg)를 GitHub에서 자동으로 만든다.
+# Windows 설치·실행 파일(.exe)과 macOS 설치 파일(.dmg)을 GitHub에서 자동으로 만든다.
 # Actions 탭에서 수동 실행하거나, v* 태그 또는 main의 앱 코드가 올라오면 실행된다.
 name: Build desktop app
 on:
@@ -22,11 +22,36 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: Build installer
+      - name: Build desktop packages
         run: npm run dist -- --publish never
         env:
           # 인증서 없이 빌드: Windows는 서명 안 함, macOS는 package.json의 identity "-" 로 임시(ad-hoc) 서명
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ runner.os == 'Windows' && 'false' || 'true' }}
+      - name: Check Windows standalone app starts without Node.js
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:MIKKANG_USER_DATA = Join-Path $env:RUNNER_TEMP 'mikang-portable-smoke'
+          New-Item -ItemType Directory -Path $env:MIKKANG_USER_DATA | Out-Null
+          $state = Join-Path $env:MIKKANG_USER_DATA 'data.json'
+          '{"notes":[],"settings":{"launchAtLogin":false}}' | Set-Content -LiteralPath $state
+          $exe = (Resolve-Path -LiteralPath 'dist/MikangMemo-Windows.exe').Path
+          $env:Path = "$env:SystemRoot\System32;$env:SystemRoot\System32\WindowsPowerShell\v1.0;$env:SystemRoot"
+          $launcher = Start-Process -FilePath $exe -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
+          try {
+            $started = $false
+            for ($attempt = 0; $attempt -lt 45; $attempt++) {
+              if ($launcher.HasExited) { throw "Standalone app exited with code $($launcher.ExitCode)" }
+              $saved = Get-Content -Raw -LiteralPath $state -ErrorAction SilentlyContinue | ConvertFrom-Json
+              if ($saved.settings.themePack -eq 'default') { $started = $true; break }
+              Start-Sleep -Seconds 1
+            }
+            if (!$started) { throw 'Standalone app did not finish starting' }
+          } finally {
+            Get-CimInstance Win32_Process -Filter "ParentProcessId=$($launcher.Id)" |
+              ForEach-Object { Stop-Process -Id $_.ProcessId -ErrorAction SilentlyContinue }
+            if (!$launcher.HasExited) { Stop-Process -Id $launcher.Id }
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: MikangMemo-jhj-${{ runner.os }}

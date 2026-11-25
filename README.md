@@ -2,7 +2,9 @@
 
 바탕화면 가장자리에 책갈피처럼 붙어 있는 메모지 + AI 비서 캐릭터. Windows와 macOS에서 동작하는 Electron 앱입니다.
 
-바탕화면 펫을 사용하려면 GitHub **Actions → Build desktop app**의 최신 성공한 `main` 실행에서 운영체제에 맞는 아티팩트를 내려받아 압축을 풀고, Windows는 `.exe`, macOS는 `.dmg`로 설치하세요. `Download ZIP`으로 받은 소스는 아래 [개발용 실행 방법](#실행하기-개발용)을 따라 실행할 수 있어요. `preview/mikang-preview.html`은 브라우저 미리보기라 바탕화면 펫이 표시되지 않아요.
+**[Windows 실행 파일 다운로드](https://github.com/forethinkfi/HK06_mikangscone/releases/latest/download/MikangMemo-Windows.exe)** · Windows 64비트. 다운로드한 `MikangMemo-Windows.exe`를 열면 설치 없이 실행돼요.
+
+Windows 설치 파일과 macOS `.dmg`는 GitHub **Actions → Build desktop app**에서 받을 수 있어요. `Download ZIP`으로 받은 소스는 아래 [개발용 실행 방법](#실행하기-개발용)을 따라 실행할 수 있어요. `preview/mikang-preview.html`은 브라우저 미리보기라 바탕화면 펫이 표시되지 않아요.
 
 ## 이렇게 동작해요
 
@@ -89,7 +91,7 @@ npm run dist:win
 npm run dist:mac
 ```
 
-결과물은 `dist/` 폴더에 생겨요 (Windows는 `.exe` 설치 파일, macOS는 `.dmg`).
+결과물은 `dist/` 폴더에 생겨요. Windows는 단독 실행 파일 `MikangMemo-Windows.exe`와 `.exe` 설치 파일, macOS는 `.dmg`가 만들어져요.
 
 GitHub에서 자동으로 만들 수도 있어요: 저장소의 **Actions → Build desktop app → Run workflow**를 누르면 Windows·macOS 설치 파일이 아티팩트로 올라와요. `v0.2.0`처럼 `v`로 시작하는 태그를 올려도 실행돼요.
 

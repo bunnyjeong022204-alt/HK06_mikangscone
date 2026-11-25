@@ -83,6 +83,12 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.png",
@@ -92,6 +98,9 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "Mikang Memo"
+    },
+    "portable": {
+      "artifactName": "MikangMemo-Windows.exe"
     },
     "afterPack": "build/after-pack.js"
   }

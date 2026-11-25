@@ -170,7 +170,10 @@ ipcMain.on('settings:apply', (event, s) => {
   if (event.sender === win?.webContents && typeof s.proPreview === 'boolean') {
     proPreview = (!app.isPackaged || DEMO) && s.proPreview;
   }
-  if (typeof s.launchAtLogin === 'boolean' && app.isPackaged) app.setLoginItemSettings({ openAtLogin: s.launchAtLogin, openAsHidden: true });
+  if (typeof s.launchAtLogin === 'boolean' && app.isPackaged) {
+    const portable = IS_WIN && process.env.PORTABLE_EXECUTABLE_FILE;
+    app.setLoginItemSettings({ openAtLogin: s.launchAtLogin, openAsHidden: true, ...(portable ? { path: portable } : {}) });
+  }
   if (s.modeOverride && s.modeOverride !== modeOverride) { modeOverride = s.modeOverride; if (tray) buildTrayMenu(); }
 });
 
