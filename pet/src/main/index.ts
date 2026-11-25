@@ -15,7 +15,7 @@ import { loadCompanionScene } from './sceneLoader';
 import fs from 'node:fs';
 import { getLocalSpeciesRoot } from './speciesLoader';
 import { IPC } from '../shared/ipcContract';
-import { pickImage, runPetMenuAction } from './petMenu';
+import { saveImagePet, runPetMenuAction } from './petMenu';
 import type { SpeciesConfig } from '../shared/speciesSchema';
 
 const FALLBACK_SPECIES_ID = 'placeholder';
@@ -152,7 +152,7 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
   return {
     state: () => ({ present: isPetVisible() && (!rendererReady || visibleSpecies.size > 0), species: speciesOptions() }),
     show,
-    importPhoto: (parent: Electron.BrowserWindow) => pickImage(parent, show),
+    importPhoto: (source: string) => show(saveImagePet(source)),
     speakSchedule(text: string) {
       if (window.isDestroyed() || !rendererReady || !window.isVisible() || !visibleSpecies.size) return false;
       window.webContents.send(IPC.SCHEDULE_SPEECH, text);

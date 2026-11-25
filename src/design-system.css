@@ -240,8 +240,7 @@
 
 .overview-assistant { background: var(--mikkang-sage-light); }
 .overview-pet { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; }
-.overview-pet-choice { display: flex; align-items: center; gap: 5px; font-size: 12px; }
-.overview-pet select, .overview-calendar input {
+.overview-calendar input {
   max-width: 155px;
   min-height: 30px;
   padding: 4px 6px;
@@ -251,7 +250,6 @@
   background: var(--mikkang-surface);
   font: 12px var(--f-ui);
 }
-.overview-pet small { color: var(--mikkang-muted); }
 .overview-calendar { margin: 10px 0 6px; }
 .overview-schedule-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 

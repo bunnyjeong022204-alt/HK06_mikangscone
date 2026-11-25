@@ -1,6 +1,6 @@
 (function (root) {
   'use strict';
-  root.Chars.CHARS.vintageBear = { name: '테디 비서', desc: '보송한 빈티지 곰', color: '#9a704b', ink: '#493525', className: 'vintage-bear-avatar' };
+  root.Chars.CHARS.vintageBear = { name: '테디 비서', desc: '보송한 빈티지 곰', petId: 'vintage-teddy', color: '#9a704b', ink: '#493525', className: 'vintage-bear-avatar' };
   root.Chars.ORDER.push('vintageBear');
   root.MemoThemes.register({
     id: 'vintage',

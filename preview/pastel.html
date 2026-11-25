@@ -559,8 +559,7 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 
 .overview-assistant { background: var(--mikkang-sage-light); }
 .overview-pet { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 10px; }
-.overview-pet-choice { display: flex; align-items: center; gap: 5px; font-size: 12px; }
-.overview-pet select, .overview-calendar input {
+.overview-calendar input {
   max-width: 155px;
   min-height: 30px;
   padding: 4px 6px;
@@ -570,7 +569,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   background: var(--mikkang-surface);
   font: 12px var(--f-ui);
 }
-.overview-pet small { color: var(--mikkang-muted); }
 .overview-calendar { margin: 10px 0 6px; }
 .overview-schedule-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 
@@ -1558,7 +1556,7 @@ body{overflow:hidden}
 
   const CHARS = {
     mikang: {
-      name: '귤비서', desc: '새콤달콤 귤',
+      name: '귤비서', desc: '새콤달콤 귤', petId: 'mikkang',
       color: '#f59a3c', ink: '#6b3a12',
       svg: () => `
         <ellipse cx="50" cy="93" rx="26" ry="4" fill="#000" opacity=".12"/>
@@ -1573,7 +1571,7 @@ body{overflow:hidden}
         <defs><radialGradient id="mk-g" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffc56b" stop-opacity=".8"/><stop offset="1" stop-color="#ef8a2b" stop-opacity=".1"/></radialGradient></defs>`,
     },
     cat: {
-      name: '냥비서', desc: '꼼꼼한 고양이',
+      name: '냥비서', desc: '꼼꼼한 고양이', petId: 'assistant-cat',
       color: '#c9b8a6', ink: '#3a2e28',
       svg: () => `
         <ellipse cx="50" cy="93" rx="26" ry="4" fill="#000" opacity=".12"/>
@@ -1589,7 +1587,7 @@ body{overflow:hidden}
         </g>`,
     },
     bunny: {
-      name: '토비서', desc: '부지런한 토끼',
+      name: '토비서', desc: '부지런한 토끼', petId: 'assistant-bunny',
       color: '#f3c3cf', ink: '#3a2e28',
       svg: () => `
         <ellipse cx="50" cy="93" rx="26" ry="4" fill="#000" opacity=".12"/>
@@ -1606,7 +1604,7 @@ body{overflow:hidden}
         </g>`,
     },
     cloud: {
-      name: '구름비서', desc: '포근한 구름',
+      name: '구름비서', desc: '포근한 구름', petId: 'assistant-cloud',
       color: '#cfe1ef', ink: '#2d3b4d',
       svg: () => `
         <ellipse cx="50" cy="93" rx="28" ry="4" fill="#000" opacity=".1"/>
@@ -1665,7 +1663,7 @@ body{overflow:hidden}
 </script>
 <script>(function (root) {
   'use strict';
-  root.Chars.CHARS['mono-cat'] = { name: '까망이', desc: '모노 스케치의 검은 고양이', color: '#1c1c1c', ink: '#1c1c1c', className: 'mono-cat-avatar' };
+  root.Chars.CHARS['mono-cat'] = { name: '까망이', desc: '모노 스케치의 검은 고양이', petId: 'mono-cat', color: '#1c1c1c', ink: '#1c1c1c', className: 'mono-cat-avatar' };
   root.Chars.ORDER.push('mono-cat');
 
   const shared = {
@@ -1701,7 +1699,7 @@ body{overflow:hidden}
   const C = root.Chars;
   if (C && !C.CHARS.octopus) {
     C.CHARS.octopus = {
-      name: '문어비서', desc: '말랑말랑 분홍 문어', color: '#f49aa3', ink: '#c94a55',
+      name: '문어비서', desc: '말랑말랑 분홍 문어', petId: 'pastel-octopus', color: '#f49aa3', ink: '#c94a55',
       svg: () => `
         <ellipse cx="50" cy="92" rx="30" ry="4" fill="#000" opacity=".1"/>
         <g class="c-body">
@@ -1742,7 +1740,7 @@ body{overflow:hidden}
 </script>
 <script>(function (root) {
   'use strict';
-  root.Chars.CHARS.vintageBear = { name: '테디 비서', desc: '보송한 빈티지 곰', color: '#9a704b', ink: '#493525', className: 'vintage-bear-avatar' };
+  root.Chars.CHARS.vintageBear = { name: '테디 비서', desc: '보송한 빈티지 곰', petId: 'vintage-teddy', color: '#9a704b', ink: '#493525', className: 'vintage-bear-avatar' };
   root.Chars.ORDER.push('vintageBear');
   root.MemoThemes.register({
     id: 'vintage',
@@ -2187,6 +2185,7 @@ let summoned = false, openId = null, selStk = null, modalOpen = false;
 let petPresent = true;
 let basicDetails = false;
 const hasPremiumMemo = () => info.proPreview === true && S.settings.proPreview === true;
+const petIdFor = (id) => id === 'custom' ? S.settings.customPetId : C.CHARS[id]?.petId;
 let bubble = { open: false, menu: false, t: 0 };
 let peek = { open: false, side: null, idx: 0, list: [], hideT: 0 };
 let cursor = { x: -1, y: -1, edge: null }, interactive = false, dragging = false;
@@ -3286,10 +3285,42 @@ async function openSettings() {
   if (modalKind === 'board') closeBoard();
   closePeek(true); closeBubble();
   keys = await api.keyStatus();
-  modalOpen = true; updateHit(); api.focus();
+  modalOpen = true; modalKind = 'settings'; updateHit(); api.focus();
   const m = $('#modal'); m.hidden = false;
   const st = S.settings;
   let petVisible = await api.petVisible?.();
+  let characterBusy = false;
+  const chooseCharacter = async (id, image) => {
+    if (characterBusy) return;
+    characterBusy = true;
+    try {
+      const makePet = api.petControls && image && hasPremiumMemo();
+      const petId = image ? null : petIdFor(id);
+      if (api.petControls && (makePet || petId)) {
+        render();
+        const state = await refreshPetControls(makePet ? 'photo' : 'show', makePet ? image : petId);
+        if (!state) return;
+        const selected = state.species.find((item) => item.selected);
+        if (makePet ? !selected?.id.startsWith('image-') : selected?.id !== petId) {
+          toast({ title: '선택한 펫을 불러오지 못했어요', ttl: 3500 });
+          return;
+        }
+        if (makePet) st.customPetId = selected.id;
+        petVisible = state.present;
+      }
+      if (image) {
+        st.customChar = image;
+        if (!makePet) delete st.customPetId;
+        maker = null;
+      }
+      st.character = id;
+      save();
+      if (openId) renderCard(byId(openId));
+    } finally {
+      characterBusy = false;
+      render();
+    }
+  };
   const seg = (key, opts, after) => h('div', { class: 'seg', role: 'group' }, opts.map(([v, l]) => h('button', { type: 'button', 'aria-pressed': String(String(st[key]) === String(v)), onclick: () => { st[key] = v; save(); after && after(); render(); } }, l)));
   const keyMsg = {};
   const testKey = async (name) => {
@@ -3346,7 +3377,7 @@ async function openSettings() {
     h('div', { class: 'row' }, h('label', { style: 'min-width:72px' }, '흰 테두리'),
       h('div', { class: 'seg', role: 'group' }, [[true, '켜기'], [false, '끄기']].map(([v, l]) => h('button', { type: 'button', 'aria-pressed': String(maker.outline === v), onclick: () => { maker.outline = v; remake(); } }, l)))),
     h('div', { class: 'row' },
-      h('button', { class: 'btn primary', type: 'button', disabled: maker.busy || !maker.result, onclick: () => { st.customChar = maker.result; st.character = 'custom'; maker = null; save(); if (openId) renderCard(byId(openId)); render(); toast({ title: '새 캐릭터가 준비됐어요', ttl: 2500 }); } }, '이 캐릭터로 정하기'),
+      h('button', { class: 'btn primary', type: 'button', disabled: maker.busy || characterBusy || !maker.result, onclick: () => chooseCharacter('custom', maker.result) }, '이 캐릭터로 정하기'),
       h('button', { class: 'btn', type: 'button', onclick: () => { maker = null; render(); } }, '취소')));
   const armedDel = {};
   const secManager = () => h('div', { class: 'secman' },
@@ -3365,22 +3396,24 @@ async function openSettings() {
       return h('div', { class: 'row' }, inp, h('button', { class: 'btn', type: 'button', onclick: add }, '섹션 추가')); })(),
     h('p', { class: 'note' }, '메모를 접으면 내용에 맞는 섹션으로 알아서 넣어줘요. 메모지 위쪽의 분류에서 직접 바꿀 수도 있어요.'));
   function render() {
+    if (m.hidden || modalKind !== 'settings') return;
+    const panelScroll = m.querySelector('.panel')?.scrollTop || 0;
     const panel = h('div', { class: 'panel', role: 'dialog', 'aria-label': '설정' },
       h('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, h('h3', {}, '설정'), h('button', { class: 'btn icon', type: 'button', 'aria-label': '닫기', onclick: closeSettings, html: ico('x', 16) })),
       window.MemoThemes ? [h('h4', {}, '테마'),
         h('div', { class: 'theme-list', role: 'group', 'aria-label': '테마' }, window.MemoThemes.list().map((tp) =>
-          h('button', { type: 'button', class: 'theme-card', 'aria-pressed': String(st.themePack === tp.id), onclick: () => { applyThemePack(tp.id, true); render(); } },
+          h('button', { type: 'button', class: 'theme-card', disabled: characterBusy, 'aria-pressed': String(st.themePack === tp.id), onclick: () => { applyThemePack(tp.id, true); render(); } },
             h('span', { class: 'tsw' }, (tp.preview || []).map((c) => h('i', { style: `background:${c}` }))),
             h('b', {}, tp.name), tp.author ? h('small', {}, `만든 사람: ${tp.author}`) : null))),
         h('p', { class: 'note' }, '테마를 바꾸면 색·글꼴·메모지·AI 비서 캐릭터·데스크톱 펫이 함께 바뀌어요. 캐릭터는 아래에서 따로 바꿀 수 있어요.')] : null,
-      h('h4', {}, 'AI 비서 캐릭터'),
+      h('h4', {}, 'AI 비서 · 데스크톱 펫'),
       h('div', { class: 'chars' },
-        C.ORDER.map((id) => h('button', { type: 'button', 'aria-pressed': String(st.character === id), onclick: () => { st.character = id; save(); if (openId) renderCard(byId(openId)); render(); } },
+        C.ORDER.map((id) => h('button', { type: 'button', disabled: characterBusy, 'aria-pressed': String(st.character === id), onclick: () => chooseCharacter(id) },
           h('span', { class: 'cv', html: C.charHTML(id) }), C.CHARS[id].name)),
         filePicker({ cls: 'charpick' + (st.character === 'custom' ? ' on' : ''), label: '내 이미지로 캐릭터 만들기', multiple: false, onFiles: pickChar },
           h('span', { class: 'cv', html: st.customChar ? C.charHTML('custom', st.customChar) : ico('image', 26) }), st.customChar ? '내 사진 바꾸기' : '내 사진으로')),
       makerUI(),
-      h('p', { class: 'note' }, '내 사진을 고르면 배경을 자동으로 지우고 스티커처럼 테두리를 둘러 캐릭터로 만들어요. 사진은 이 컴퓨터 밖으로 나가지 않아요.'),
+      api.petControls ? h('p', { class: 'note' }, '캐릭터를 고르면 AI 비서와 움직이는 펫이 함께 바뀌어요. 내 사진으로 움직이는 펫을 만드는 기능은 Pro에서 쓸 수 있어요.') : null,
       h('div', { class: 'row' }, h('label', {}, '이름'), h('input', { type: 'text', maxlength: '8', value: st.petName, placeholder: (C.CHARS[st.character] || C.CHARS.mikang).name, oninput: (e) => { st.petName = e.target.value; save(); } })),
       h('h4', {}, '화면'),
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '책갈피 위치'), seg('side', [['left', '왼쪽'], ['right', '오른쪽']], applySide)),
@@ -3391,9 +3424,14 @@ async function openSettings() {
       h('div', { class: 'row' }, h('label', { style: 'min-width:96px' }, '가장자리 미리보기'), seg('peek', [[true, '켜기'], [false, '끄기']]), seg('peekDelay', [[200, '빠르게'], [350, '보통'], [600, '천천히']])),
       api.petVisible ? h('div', { class: 'row' }, h('label', {}, '움직이는 데스크톱 펫'),
         h('button', { type: 'button', class: 'btn', role: 'switch', 'aria-label': '움직이는 데스크톱 펫', 'aria-checked': String(petVisible === true), onclick: async () => {
-          petVisible = await api.petVisible(!(await api.petVisible()));
+          if (await api.petVisible()) {
+            petVisible = await api.petVisible(false);
+          } else {
+            const state = await refreshPetControls('show', petIdFor(st.character));
+            petVisible = state?.present ?? false;
+          }
           render();
-        } }, petVisible ? '켜기' : '끄기')) : null,
+        } }, petVisible ? '펫 숨기기' : '펫 소환하기')) : null,
       info.proPreview ? h('div', { class: 'row' }, h('label', {}, 'Pro 미리보기'),
         seg('proPreview', [[false, '기본 메모'], [true, 'Pro']], () => {
           api.applySettings({ proPreview: st.proPreview });
@@ -3423,6 +3461,7 @@ async function openSettings() {
         h('button', { class: 'btn', type: 'button', onclick: () => api.quit() }, '앱 종료')),
       h('p', { class: 'note' }, '단축키: Ctrl/⌘ + Shift + M 책갈피 펼치기 · Ctrl/⌘ + Shift + R 녹음 메모'));
     m.replaceChildren(panel);
+    panel.scrollTop = panelScroll;
   }
   m.onpointerdown = (e) => { if (e.target === m) closeSettings(); };
   render();
@@ -3669,23 +3708,12 @@ async function refreshPetControls(action, value) {
     petPresent = state.present;
     applyMode();
   }
-  if (!target?.isConnected) return;
-  const species = state.species;
-  if (!species.length) {
-    target.replaceChildren(h('button', { class: 'btn', type: 'button', onclick: () => refreshPetControls() }, '펫 목록 다시 불러오기'));
-    return;
+  if (target?.isConnected) {
+    target.hidden = state.present;
+    target.replaceChildren(state.present ? '' :
+      h('button', { class: 'btn primary', type: 'button', onclick: () => refreshPetControls('show', petIdFor(S.settings.character)) }, '펫 소환하기'));
   }
-  const select = h('select', { 'aria-label': '펫 바꾸기', onchange: (e) => refreshPetControls('show', e.target.value) },
-    h('option', { value: '', disabled: true, selected: !species.some((item) => item.selected) }, '펫 바꾸기'),
-    species.map((item) => h('option', { value: item.id, selected: item.selected }, item.label)));
-  target.replaceChildren(
-    state.present ? h('label', { class: 'overview-pet-choice' }, '펫 바꾸기', select)
-      : h('button', { class: 'btn primary', type: 'button', onclick: () => refreshPetControls('show') }, '펫 소환하기'),
-    h('button', { class: 'btn', type: 'button', onclick: () => {
-      if (hasPremiumMemo()) refreshPetControls('photo');
-      else toast({ title: '사진으로 펫 만들기는 Pro에서 사용할 수 있어요', ttl: 3500 });
-    } }, iel('image', 14), '사진으로 펫 만들기', h('small', {}, 'Pro')),
-  );
+  return state;
 }
 
 function renderBoard() {
@@ -3711,7 +3739,7 @@ function renderBoard() {
         h('h2', {}, C.charName(S)),
         h('button', { class: 'overview-icon', type: 'button', 'aria-label': 'AI 비서', onclick: toggleMenu }, iel('chat', 17))),
       h('div', { class: 'overview-brief' }, h('b', {}, '오늘 브리핑'), h('p', {}, briefing())),
-      api.petControls ? h('div', { id: 'overview-pet', class: 'overview-pet', role: 'group', 'aria-label': '데스크톱 펫' }) : null,
+      api.petControls ? h('div', { id: 'overview-pet', class: 'overview-pet', hidden: true }) : null,
       h('form', { class: 'overview-quick', onsubmit: (e) => {
         e.preventDefault();
         const text = quick.value.trim();

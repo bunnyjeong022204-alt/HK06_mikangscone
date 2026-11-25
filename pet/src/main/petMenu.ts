@@ -5,12 +5,11 @@ import path from 'node:path';
 import type { SpeciesAnimationDef, SpeciesConfig } from '../shared/speciesSchema';
 import { getLocalSpeciesRoot, listAvailableSpecies } from './speciesLoader';
 
-export async function pickImage(parent: BrowserWindow, select: (id: string) => void) {
-  const result = await dialog.showOpenDialog(parent, { title: '펫으로 쓸 이미지 선택', properties: ['openFile'],
-    filters: [{ name: '이미지', extensions: ['png', 'jpeg', 'jpg', 'webp'] }] });
-  if (result.canceled || !result.filePaths[0]) return;
-  const source = result.filePaths[0];
-  const art = nativeImage.createFromPath(source);
+export function saveImagePet(source: string) {
+  if (source.length > 5_000_000 || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(source)) {
+    throw new Error('펫으로 쓸 PNG 이미지를 확인해 주세요.');
+  }
+  const art = nativeImage.createFromDataURL(source);
   if (art.isEmpty()) throw new Error('지원되는 이미지 파일을 선택해 주세요.');
   const size = art.getSize();
   const scale = Math.min(1, 360 / Math.max(size.width, size.height));
@@ -29,13 +28,13 @@ export async function pickImage(parent: BrowserWindow, select: (id: string) => v
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'pet.png'), png);
   const base: SpeciesAnimationDef = { sheet: 'pet.png', frameWidth: side, frameHeight: side, frameCount: 1, fps: 2, loop: true };
-  const config: SpeciesConfig = { id, displayName: path.parse(source).name.slice(0, 60), version: '1.0.0',
+  const config: SpeciesConfig = { id, displayName: '내 사진 펫', version: '1.0.0',
     animations: { idle: { ...base, motion: 'breathe' }, walk: { ...base, motion: 'waddle', mirrorWhen: 'left' },
-      sleep: { ...base, motion: 'sleep', effect: 'sleep' }, dragged: base },
+      sleep: { ...base, motion: 'sleep', effect: 'sleep' }, dragged: { ...base, motion: 'wriggle' } },
     behavior: { walkSpeedPxPerSec: 45, idleMinMs: 1800, idleMaxMs: 3700, walkMinMs: 4500, walkMaxMs: 8500, spriteScale: 120 / side } };
   const configPath = path.join(dir, 'species.json');
   if (!fs.existsSync(configPath)) fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
-  select(id);
+  return id;
 }
 
 export async function runPetMenuAction(window: BrowserWindow, action: unknown, select: (id: string) => void, dismiss: (id: string) => void, hide: () => void) {

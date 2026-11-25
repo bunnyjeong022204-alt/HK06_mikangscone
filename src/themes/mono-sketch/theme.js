@@ -1,6 +1,6 @@
 (function (root) {
   'use strict';
-  root.Chars.CHARS['mono-cat'] = { name: '까망이', desc: '모노 스케치의 검은 고양이', color: '#1c1c1c', ink: '#1c1c1c', className: 'mono-cat-avatar' };
+  root.Chars.CHARS['mono-cat'] = { name: '까망이', desc: '모노 스케치의 검은 고양이', petId: 'mono-cat', color: '#1c1c1c', ink: '#1c1c1c', className: 'mono-cat-avatar' };
   root.Chars.ORDER.push('mono-cat');
 
   const shared = {

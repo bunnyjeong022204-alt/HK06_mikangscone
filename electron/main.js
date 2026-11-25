@@ -153,8 +153,8 @@ ipcMain.handle('memo-pet:visible', (event, visible) => {
 ipcMain.handle('memo-pet:controls', async (event, action, id) => {
   if (!win || event.sender !== win.webContents || !petControls) return null;
   if (action === 'show') petControls.show(typeof id === 'string' ? id : undefined);
-  if (action === 'photo' && proPreview) {
-    await petControls.importPhoto(win);
+  if (action === 'photo' && proPreview && typeof id === 'string') {
+    petControls.importPhoto(id);
   }
   return petControls.state();
 });

@@ -8,7 +8,7 @@
   const C = root.Chars;
   if (C && !C.CHARS.octopus) {
     C.CHARS.octopus = {
-      name: '문어비서', desc: '말랑말랑 분홍 문어', color: '#f49aa3', ink: '#c94a55',
+      name: '문어비서', desc: '말랑말랑 분홍 문어', petId: 'pastel-octopus', color: '#f49aa3', ink: '#c94a55',
       svg: () => `
         <ellipse cx="50" cy="92" rx="30" ry="4" fill="#000" opacity=".1"/>
         <g class="c-body">

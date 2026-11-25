@@ -17,7 +17,7 @@
 
   const CHARS = {
     mikang: {
-      name: '귤비서', desc: '새콤달콤 귤',
+      name: '귤비서', desc: '새콤달콤 귤', petId: 'mikkang',
       color: '#f59a3c', ink: '#6b3a12',
       svg: () => `
         <ellipse cx="50" cy="93" rx="26" ry="4" fill="#000" opacity=".12"/>
@@ -32,7 +32,7 @@
         <defs><radialGradient id="mk-g" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffc56b" stop-opacity=".8"/><stop offset="1" stop-color="#ef8a2b" stop-opacity=".1"/></radialGradient></defs>`,
     },
     cat: {
-      name: '냥비서', desc: '꼼꼼한 고양이',
+      name: '냥비서', desc: '꼼꼼한 고양이', petId: 'assistant-cat',
       color: '#c9b8a6', ink: '#3a2e28',
       svg: () => `
         <ellipse cx="50" cy="93" rx="26" ry="4" fill="#000" opacity=".12"/>
@@ -48,7 +48,7 @@
         </g>`,
     },
     bunny: {
-      name: '토비서', desc: '부지런한 토끼',
+      name: '토비서', desc: '부지런한 토끼', petId: 'assistant-bunny',
       color: '#f3c3cf', ink: '#3a2e28',
       svg: () => `
         <ellipse cx="50" cy="93" rx="26" ry="4" fill="#000" opacity=".12"/>
@@ -65,7 +65,7 @@
         </g>`,
     },
     cloud: {
-      name: '구름비서', desc: '포근한 구름',
+      name: '구름비서', desc: '포근한 구름', petId: 'assistant-cloud',
       color: '#cfe1ef', ink: '#2d3b4d',
       svg: () => `
         <ellipse cx="50" cy="93" rx="28" ry="4" fill="#000" opacity=".1"/>
