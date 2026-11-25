@@ -52,7 +52,7 @@ function listSpeciesInRoot(root: string, source: SpeciesSource): SpeciesListing[
     const configPath = path.join(root, entry.name, 'species.json');
     try {
       const parsed: unknown = JSON.parse(fs.readFileSync(configPath, 'utf-8').replace(/^\uFEFF/, ''));
-      if (isSpeciesConfig(parsed)) {
+      if (isSpeciesConfig(parsed) && parsed.id !== 'black-wizard-cat') {
         listings.push({ id: parsed.id, displayName: parsed.displayName, source });
       }
     } catch {

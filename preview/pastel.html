@@ -697,6 +697,11 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   outline-offset: 2px;
 }
 .overview-list-actions { display: flex; align-items: center; gap: 8px; }
+.overview-list-actions .overview-add-note {
+  justify-content: center;
+  gap: 4px;
+  padding-inline: 9px;
+}
 .overview-library-tools {
   display: flex;
   align-items: center;
@@ -1067,15 +1072,48 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   --upcoming-day-bg: var(--mikkang-sage-light);
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card {
-  background: var(--mono-paper-art) center / 100% 100% no-repeat;
+  container-type: size;
+  background: var(--mono-paper-art) center / contain no-repeat;
   border: 0;
   border-radius: 0;
   color: var(--mikkang-ink);
 }
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet {
+  /* Match the centered 370 × 470 artwork, including its transparent margins. */
+  --mono-art-width: min(100cqw, calc(100cqh * 370 / 470));
+  --mono-art-height: min(100cqh, calc(100cqw * 470 / 370));
+  --mono-inset-inline: calc((100cqw - var(--mono-art-width)) / 2 + var(--mono-art-width) * .11);
+  --mono-inset-top: calc((100cqh - var(--mono-art-height)) / 2 + var(--mono-art-height) * .18);
+  --mono-inset-bottom: calc((100cqh - var(--mono-art-height)) / 2 + var(--mono-art-height) * .12);
+}
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card :is(.paper, .backing, .clip, .orn) { display: none; }
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet:not(.basic-note) .card .content { padding: 70px 30px 28px; }
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet.basic-note .card { padding: 32px 15px 10px; box-shadow: var(--mikkang-shadow); }
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .basic-note-head { color: inherit; background: transparent; }
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet:not(.basic-note) .card .content {
+  padding: var(--mono-inset-top) var(--mono-inset-inline) var(--mono-inset-bottom);
+}
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .basic-note-head {
+  margin: var(--mono-inset-top) var(--mono-inset-inline) 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+}
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .basic-note .card .content {
+  padding: 7px var(--mono-inset-inline);
+}
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card .chips { flex: none; padding-inline: 0; }
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card .chip { max-width: 100%; }
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card .chip-label { min-width: 0; overflow-wrap: anywhere; }
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card .chip button { flex: none; }
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card .chip.cand button { flex: 0 1 auto; min-width: 0; text-align: left; }
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .basic-format {
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 0 var(--mono-inset-inline) var(--mono-inset-bottom);
+  padding: 2px 0;
+}
+:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .basic-format :is(button, .basic-photo) {
+  width: 28px;
+  height: 28px;
+}
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) :is(.card .kw, .pcard .pk) {
   background: linear-gradient(transparent 62%, var(--mikkang-yellow) 62% 95%, transparent 95%);
 }
@@ -1085,6 +1123,18 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   color: inherit;
   line-height: 28px;
 }
+:root[data-theme-pack="mono-sketch-dark"] .card :is(.basic-note-caption, .kw, .body, .basic-icon, .basic-format button, .basic-photo) {
+  color: #f8f7f3;
+}
+:root[data-theme-pack="mono-sketch-dark"] .card :is(.basic-note-caption, .kw, .body)::placeholder,
+:root[data-theme-pack="mono-sketch-dark"] .card .basic-editor.is-empty::before {
+  color: #bdbcb5;
+  opacity: 1;
+}
+:root[data-theme-pack="mono-sketch-dark"] .card .kw { background: linear-gradient(transparent 62%, #605523 62% 95%, transparent 95%); }
+:root[data-theme-pack="mono-sketch-dark"] .card .chip { background: #2f2f2c; color: #f8f7f3; }
+:root[data-theme-pack="mono-sketch-dark"] .card .chip button { color: #c9c8bf; }
+:root[data-theme-pack="mono-sketch-dark"] .card .chip button:is(.on, [aria-pressed="true"]) { color: var(--cherry); }
 :root[data-theme-pack="mono-sketch-dark"] :is(.bar, .pal, .overview-brief, .overview-quick, .overview-item, .overview-avatar, .overview-layout-editor, .toast .tact) {
   background: var(--mikkang-surface);
   color: var(--mikkang-ink);
@@ -2117,7 +2167,8 @@ const ICONS = {
   cal: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', minus: '<path d="M5 12h14"/>',
   rotate: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>', check: '<path d="M5 12.5l4.5 4.5L19 7"/>', fold: '<path d="M9 5l7 7-7 7"/>',
-  send: '<path d="M4 12l16-8-6 16-2.5-6.5z"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M5.2 18.8l2.1-2.1M16.7 7.3l2.1-2.1"/>',
+  send: '<path d="M4 12l16-8-6 16-2.5-6.5z"/>',
+  gear: '<path d="M10 2.5h4l.6 2.5 1.4.6 2.2-1.4L21 7l-1.4 2.2.6 1.4 2.5.6v3.6l-2.5.6-.6 1.4 1.4 2.2-2.8 2.8-2.2-1.4-1.4.6-.6 2.5h-4l-.6-2.5-1.4-.6-2.2 1.4L3 19l1.4-2.2-.6-1.4-2.5-.6v-3.6l2.5-.6.6-1.4L3 7l2.8-2.8L8 5.6 9.4 5z" transform="translate(1.2 .3) scale(.9)"/><circle cx="12" cy="12" r="3"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',
   pin: '<path d="M9 3h6l-1 5 3 3H7l3-3z"/><path d="M12 11v10"/>',
   chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
@@ -2168,6 +2219,19 @@ function applyThemePack(id, fromUser) {
   if (openId && byId(openId)) renderCard(byId(openId));
   renderTabs();
   if (modalKind === 'board') renderBoard();
+}
+
+function applyPetMenuSelection(petId) {
+  const themes = window.MemoThemes.list();
+  const current = themePack();
+  const linked = current?.id !== 'default' && current?.petSpecies === petId
+    ? current
+    : themes.find((theme) => theme.id !== 'default' && theme.petSpecies === petId);
+  if (!linked && petId !== S.settings.customPetId) return;
+  S.settings.character = linked?.character ?? 'custom';
+  applyThemePack(linked?.id ?? current.id, false);
+  save();
+  if (modalKind === 'settings') void openSettings();
 }
 
 /* ─────────── 스티커 ─────────── */
@@ -2590,7 +2654,7 @@ function renderChips(n) {
   for (const e of n.events) {
     box.append(h('span', { class: 'chip' + (e.alarm && !e.done ? '' : ' off') },
       e.deadline ? h('span', { class: 'dl' }, '마감') : null,
-      `${fmtWhen(e.at)} ${e.title}`,
+      h('span', { class: 'chip-label' }, `${fmtWhen(e.at)} ${e.title}`),
       h('button', { type: 'button', class: 'dday-toggle', 'aria-label': `${e.title} 디데이 표시`,
         'aria-pressed': String(e.showDday === true), title: '디데이 표시 전환',
         onclick: () => { e.showDday = !e.showDday; save(); renderChips(n); },
@@ -2599,7 +2663,7 @@ function renderChips(n) {
       h('button', { type: 'button', 'aria-label': '일정 삭제', onclick: () => { n.events = n.events.filter((x) => x !== e); save(); renderChips(n); renderTabs(); }, html: ico('x', 13) })));
   }
   for (const c of candidates(n)) {
-    box.append(h('span', { class: 'chip cand' }, h('button', { type: 'button', title: '알람으로 등록', onclick: () => { addEvent(n, c); save(); renderChips(n); renderTabs(); refreshAgenda(); } }, iel('plus', 13), `알람 ${fmtWhen(c.at)} ${c.title}`)));
+    box.append(h('span', { class: 'chip cand' }, h('button', { type: 'button', title: '알람으로 등록', onclick: () => { addEvent(n, c); save(); renderChips(n); renderTabs(); refreshAgenda(); } }, iel('plus', 13), h('span', { class: 'chip-label' }, `알람 ${fmtWhen(c.at)} ${c.title}`))));
   }
 }
 
@@ -3671,7 +3735,7 @@ function renderBoard() {
             renderBoard();
             $('.overview-selection-toggle')?.focus({ preventScroll: true });
           } }, overviewSelecting ? '선택 취소' : '선택') : null,
-          h('button', { class: 'btn primary', type: 'button', onclick: () => newNote() }, iel('plus', 14), '메모'))),
+          h('button', { class: 'btn primary overview-add-note', type: 'button', onclick: () => newNote() }, iel('plus', 14), '메모'))),
       total ? h('div', { class: 'overview-library-tools' },
         h('input', { id: 'overview-search', type: 'search', value: overviewQuery, 'aria-label': '메모 검색',
           placeholder: '제목 또는 내용 검색', oninput: (e) => { overviewQuery = e.target.value; renderOverviewNotes(); },
@@ -3800,6 +3864,7 @@ function bindGlobal() {
   });
   api.onDisplay(() => { fit(); if (bubble.open) placeBubble(); });
   api.onPetChanged?.(() => { void refreshPetControls(); });
+  api.onPetMenuSelected?.(applyPetMenuSelection);
   api.onOpenNote((id) => { if (id && byId(id)) openNote(id); });
   api.onCommand((cmd) => {
     if (cmd === 'summon') toggleDock();

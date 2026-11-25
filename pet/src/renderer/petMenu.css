@@ -114,11 +114,11 @@
 
 .pet-action-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px 4px;
 }
 
-.pet-action-grid.has-fishing-action { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.pet-action-grid.has-fishing-action { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .pet-quick-menu button {
   padding: 0;
@@ -142,9 +142,6 @@
   overflow-wrap: anywhere;
 }
 
-.has-fishing-action .pet-action-tile { grid-column: span 2; }
-.has-fishing-action .pet-action-tile:nth-child(4) { grid-column: 2 / span 2; }
-.has-fishing-action .pet-action-tile:nth-child(5) { grid-column: 4 / span 2; }
 .pet-action-tile:nth-child(2) .pet-menu-icon { transform: rotate(-5deg); }
 .pet-action-tile:nth-child(4) .pet-menu-icon { transform: rotate(4deg); }
 .pet-action-tile span { font-size: 16px; }

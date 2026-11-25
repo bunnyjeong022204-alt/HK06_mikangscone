@@ -22,13 +22,13 @@
       "leftSheet": "sprites/walk-left.png"
     },
     "sleep": {
-      "sheet": "sprites/sleep.png",
+      "sheet": "sprites/sleep-curled.svg",
       "frameWidth": 192,
       "frameHeight": 192,
       "frameCount": 5,
       "fps": 3,
       "loop": true,
-      "leftSheet": "sprites/sleep-left.png"
+      "mirrorWhen": "left"
     },
     "dragged": {
       "sheet": "sprites/dragged.png",
@@ -129,6 +129,15 @@
       "fps": 12,
       "loop": true,
       "mirrorWhen": "right"
+    },
+    "ouch": {
+      "sheet": "sprites/ouch.svg",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 5,
+      "loop": false,
+      "mirrorWhen": "left"
     },
     "recover": {
       "sheet": "sprites/recover.png",

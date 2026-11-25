@@ -24,7 +24,7 @@ export const IPC = {
 } as const;
 
 export type SceneCommand = 'demo' | 'quiet' | 'toy';
-export type PetMenuAction = { kind: 'select' | 'dismiss'; id: string } | { kind: 'hide' };
+export type PetMenuAction = { kind: 'select' | 'dismiss'; id: string } | { kind: 'hide' | 'quit' };
 export interface PetMenuSpecies { id: string; label: string; selected: boolean; visible: boolean; dismissed: boolean }
 
 export interface Rect {

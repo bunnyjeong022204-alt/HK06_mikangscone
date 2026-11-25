@@ -75,7 +75,7 @@ function watchActiveSpecies(speciesId: string, publish: (scene: SpeciesConfig) =
   unwatchSpecies = () => { watcher.close(); unwatchers.forEach((stop) => stop()); };
 }
 
-export function startPet(notifyVisibilityChange: () => void, openBookmarks: () => void) {
+export function startPet(notifyVisibilityChange: () => void, openBookmarks: () => void, onMenuSelection: (id: string) => void) {
   onVisibilityChange = notifyVisibilityChange;
   registerAssetProtocolHandler();
   ensureLocalSpeciesRoot();
@@ -126,7 +126,10 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
   });
   ipcMain.on(IPC.PET_MENU_ACTION, (event, action: unknown) => {
     if (event.sender === window.webContents) {
-      void runPetMenuAction(window, action, selectPet, dismissPet, () => setPetVisible(false));
+      runPetMenuAction(action, (id) => {
+        selectPet(id);
+        onMenuSelection(id);
+      }, dismissPet, () => setPetVisible(false));
     }
   });
   ipcMain.on(IPC.OPEN_BOOKMARKS, (event) => {

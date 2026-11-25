@@ -222,7 +222,7 @@ app.whenReady().then(() => {
   petControls = pet.startPet(() => {
     if (tray) buildTrayMenu();
     send('pet-changed');
-  }, () => send('cmd', 'pet-bookmarks'));
+  }, () => send('cmd', 'pet-bookmarks'), (id) => send('pet-menu-selected', id));
   createOverlay();
   createTray();
   registerShortcuts();

@@ -29,7 +29,8 @@ const ICONS = {
   cal: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', minus: '<path d="M5 12h14"/>',
   rotate: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>', check: '<path d="M5 12.5l4.5 4.5L19 7"/>', fold: '<path d="M9 5l7 7-7 7"/>',
-  send: '<path d="M4 12l16-8-6 16-2.5-6.5z"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M5.2 18.8l2.1-2.1M16.7 7.3l2.1-2.1"/>',
+  send: '<path d="M4 12l16-8-6 16-2.5-6.5z"/>',
+  gear: '<path d="M10 2.5h4l.6 2.5 1.4.6 2.2-1.4L21 7l-1.4 2.2.6 1.4 2.5.6v3.6l-2.5.6-.6 1.4 1.4 2.2-2.8 2.8-2.2-1.4-1.4.6-.6 2.5h-4l-.6-2.5-1.4-.6-2.2 1.4L3 19l1.4-2.2-.6-1.4-2.5-.6v-3.6l2.5-.6.6-1.4L3 7l2.8-2.8L8 5.6 9.4 5z" transform="translate(1.2 .3) scale(.9)"/><circle cx="12" cy="12" r="3"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',
   pin: '<path d="M9 3h6l-1 5 3 3H7l3-3z"/><path d="M12 11v10"/>',
   chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
@@ -80,6 +81,19 @@ function applyThemePack(id, fromUser) {
   if (openId && byId(openId)) renderCard(byId(openId));
   renderTabs();
   if (modalKind === 'board') renderBoard();
+}
+
+function applyPetMenuSelection(petId) {
+  const themes = window.MemoThemes.list();
+  const current = themePack();
+  const linked = current?.id !== 'default' && current?.petSpecies === petId
+    ? current
+    : themes.find((theme) => theme.id !== 'default' && theme.petSpecies === petId);
+  if (!linked && petId !== S.settings.customPetId) return;
+  S.settings.character = linked?.character ?? 'custom';
+  applyThemePack(linked?.id ?? current.id, false);
+  save();
+  if (modalKind === 'settings') void openSettings();
 }
 
 /* ─────────── 스티커 ─────────── */
@@ -502,7 +516,7 @@ function renderChips(n) {
   for (const e of n.events) {
     box.append(h('span', { class: 'chip' + (e.alarm && !e.done ? '' : ' off') },
       e.deadline ? h('span', { class: 'dl' }, '마감') : null,
-      `${fmtWhen(e.at)} ${e.title}`,
+      h('span', { class: 'chip-label' }, `${fmtWhen(e.at)} ${e.title}`),
       h('button', { type: 'button', class: 'dday-toggle', 'aria-label': `${e.title} 디데이 표시`,
         'aria-pressed': String(e.showDday === true), title: '디데이 표시 전환',
         onclick: () => { e.showDday = !e.showDday; save(); renderChips(n); },
@@ -511,7 +525,7 @@ function renderChips(n) {
       h('button', { type: 'button', 'aria-label': '일정 삭제', onclick: () => { n.events = n.events.filter((x) => x !== e); save(); renderChips(n); renderTabs(); }, html: ico('x', 13) })));
   }
   for (const c of candidates(n)) {
-    box.append(h('span', { class: 'chip cand' }, h('button', { type: 'button', title: '알람으로 등록', onclick: () => { addEvent(n, c); save(); renderChips(n); renderTabs(); refreshAgenda(); } }, iel('plus', 13), `알람 ${fmtWhen(c.at)} ${c.title}`)));
+    box.append(h('span', { class: 'chip cand' }, h('button', { type: 'button', title: '알람으로 등록', onclick: () => { addEvent(n, c); save(); renderChips(n); renderTabs(); refreshAgenda(); } }, iel('plus', 13), h('span', { class: 'chip-label' }, `알람 ${fmtWhen(c.at)} ${c.title}`))));
   }
 }
 
@@ -1583,7 +1597,7 @@ function renderBoard() {
             renderBoard();
             $('.overview-selection-toggle')?.focus({ preventScroll: true });
           } }, overviewSelecting ? '선택 취소' : '선택') : null,
-          h('button', { class: 'btn primary', type: 'button', onclick: () => newNote() }, iel('plus', 14), '메모'))),
+          h('button', { class: 'btn primary overview-add-note', type: 'button', onclick: () => newNote() }, iel('plus', 14), '메모'))),
       total ? h('div', { class: 'overview-library-tools' },
         h('input', { id: 'overview-search', type: 'search', value: overviewQuery, 'aria-label': '메모 검색',
           placeholder: '제목 또는 내용 검색', oninput: (e) => { overviewQuery = e.target.value; renderOverviewNotes(); },
@@ -1712,6 +1726,7 @@ function bindGlobal() {
   });
   api.onDisplay(() => { fit(); if (bubble.open) placeBubble(); });
   api.onPetChanged?.(() => { void refreshPetControls(); });
+  api.onPetMenuSelected?.(applyPetMenuSelection);
   api.onOpenNote((id) => { if (id && byId(id)) openNote(id); });
   api.onCommand((cmd) => {
     if (cmd === 'summon') toggleDock();

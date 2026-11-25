@@ -94,7 +94,8 @@ export class PetQuickMenu {
     };
     if (this.hasToy) tile('fish', this.toyEnabled ? '낚시대 넣기' : '낚시대 꺼내기', () => { this.close(); this.toggleToy(); });
     tile('cat', this.empty ? '캐릭터 추가' : '캐릭터 변경', () => { void this.showSpecies(); });
-    tile('exit', '펫 숨기기', () => this.dispatch({ kind: 'hide' }));
+    tile('hide', '펫 숨기기', () => this.dispatch({ kind: 'hide' }));
+    tile('exit', '앱 종료', () => this.dispatch({ kind: 'quit' }));
     this.panel.replaceChildren(grid);
     this.place();
     this.panel.focus({ preventScroll: true });

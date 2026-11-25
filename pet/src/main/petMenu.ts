@@ -1,4 +1,4 @@
-import { type BrowserWindow, dialog, nativeImage } from 'electron';
+import { app, dialog, nativeImage } from 'electron';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -37,7 +37,7 @@ export function saveImagePet(source: string) {
   return id;
 }
 
-export async function runPetMenuAction(window: BrowserWindow, action: unknown, select: (id: string) => void, dismiss: (id: string) => void, hide: () => void) {
+export function runPetMenuAction(action: unknown, select: (id: string) => void, dismiss: (id: string) => void, hide: () => void) {
   if (!action || typeof action !== 'object' || !('kind' in action)) return;
   try {
     switch (action.kind) {
@@ -50,6 +50,7 @@ export async function runPetMenuAction(window: BrowserWindow, action: unknown, s
         if ('id' in action && typeof action.id === 'string') dismiss(action.id);
         break;
       case 'hide': hide(); break;
+      case 'quit': app.quit(); break;
     }
   } catch (error) {
     dialog.showErrorBox('데스크톱 펫', String(error));
