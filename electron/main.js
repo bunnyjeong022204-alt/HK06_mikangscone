@@ -202,6 +202,21 @@ ipcMain.handle('ai:summarize', async (_e, payload) => {
   try { return { ok: true, text: await ai.summarizeAll(key, payload || {}) }; }
   catch (e) { return { ok: false, reason: 'error', error: ai.describeError(e) }; }
 });
+ipcMain.handle('ai:search-notes', async (event, payload) => {
+  if (event.sender !== win?.webContents || typeof payload?.query !== 'string' || !Array.isArray(payload.notes)) {
+    return { ok: false };
+  }
+  const key = store.getKey('anthropic');
+  if (!key) return { ok: false, reason: 'nokey' };
+  const query = payload.query.trim().slice(0, 300);
+  const notes = payload.notes.slice(0, 40).map((note) => ({
+    title: typeof note?.title === 'string' ? note.title.slice(0, 300) : '',
+    text: typeof note?.text === 'string' ? note.text.slice(0, 2600) : '',
+  }));
+  if (!query || !notes.length) return { ok: true, indexes: [] };
+  try { return { ok: true, indexes: await ai.searchNotes(key, { query, notes }) }; }
+  catch (e) { return { ok: false, reason: 'error', error: ai.describeError(e) }; }
+});
 ipcMain.handle('weather:get', async (_e, city) => {
   try { return await getWeather(city); }
   catch { return { ok: false, error: '날씨를 가져오지 못했어요. 인터넷 연결을 확인해 주세요.' }; }

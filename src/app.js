@@ -1317,6 +1317,7 @@ let overviewDay;
 const overviewSelected = new Set();
 let overviewSelecting = false;
 let overviewQuery = '';
+let overviewAiSearch = null;
 let overviewPinnedOnly = false;
 let overviewEditing = false;
 const overviewCardLabels = {
@@ -1359,6 +1360,7 @@ function openBoard(filter) {
 }
 function closeBoard() {
   overviewEditing = false;
+  overviewAiSearch = null;
   modalOpen = false; modalKind = '';
   const m = $('#modal'); m.hidden = true; m.classList.remove('boardwrap'); m.replaceChildren(); m.onpointerdown = null;
   $('#stage').classList.remove('overview-open');
@@ -1447,11 +1449,41 @@ function boardNote(n) {
   return el;
 }
 
+async function searchOverviewNotes(key, query, candidates) {
+  const search = { key, status: 'loading', ids: [] };
+  overviewAiSearch = search;
+  renderOverviewNotes();
+  const batches = [];
+  for (let start = 0; start < candidates.length; start += 40) {
+    const batch = candidates.slice(start, start + 40);
+    const payload = { query, notes: batch.map((n) => ({ title: memoTitle(n), text: n.text.slice(0, 2600) })) };
+    const response = api.searchNotes ? await api.searchNotes(payload).catch(() => ({ ok: false })) : { ok: false, reason: 'nokey' };
+    if (overviewAiSearch !== search) return;
+    if (!response?.ok || !Array.isArray(response.indexes)) {
+      search.status = response?.reason === 'nokey' ? 'nokey' : 'error';
+      renderOverviewNotes();
+      return;
+    }
+    batches.push([...new Set(response.indexes)]
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < batch.length)
+      .slice(0, 8).map((index) => batch[index].id));
+  }
+  for (let rank = 0; rank < 8 && search.ids.length < 8; rank++) {
+    for (const batch of batches) {
+      if (batch[rank] && search.ids.length < 8) search.ids.push(batch[rank]);
+    }
+  }
+  search.status = 'done';
+  renderOverviewNotes();
+}
+
 function renderOverviewNotes() {
   const groups = $('#overview-groups');
   if (!groups) return;
   groups.replaceChildren();
   const query = overviewQuery.trim().normalize('NFC').toLocaleLowerCase('ko');
+  const key = JSON.stringify([query, boardFilter, overviewPinnedOnly]);
+  if (overviewAiSearch?.key !== key) overviewAiSearch = null;
   const keywords = query.split(/\s+/).filter(Boolean);
   for (const section of [...S.sections, INBOX]) {
     if (boardFilter !== 'all' && boardFilter !== section.id) continue;
@@ -1468,8 +1500,31 @@ function renderOverviewNotes() {
     bindImageDrop(group, () => null, () => newNote(false, section.id));
     groups.append(group);
   }
-  if (!groups.childElementCount) groups.append(h('p', { class: 'overview-muted', role: 'status' },
-    query ? '검색 결과가 없어요.' : '고정한 메모가 없어요.'));
+  if (groups.childElementCount) return;
+  if (!query) {
+    groups.append(h('p', { class: 'overview-muted', role: 'status' }, '고정한 메모가 없어요.'));
+    return;
+  }
+  const candidates = S.notes.filter((n) => !isEmpty(n) && (!overviewPinnedOnly || n.pinned) &&
+    (boardFilter === 'all' || secIdOf(n) === boardFilter));
+  const search = overviewAiSearch;
+  if (search?.status === 'done') {
+    const notes = search.ids.map((id) => candidates.find((n) => n.id === id)).filter(Boolean);
+    groups.append(h('p', { class: 'overview-muted', role: 'status' },
+      notes.length ? `AI가 찾은 관련 메모 ${notes.length}개` : 'AI도 관련 메모를 찾지 못했어요.'));
+    if (notes.length) groups.append(h('div', { class: 'overview-items' }, notes.map(boardNote)));
+    return;
+  }
+  const loading = search?.status === 'loading';
+  const needsKey = search?.status === 'nokey';
+  const status = loading ? 'AI가 관련 메모를 찾고 있어요…' : needsKey ? 'AI 검색에는 Claude 연결이 필요해요.' :
+    search?.status === 'error' ? 'AI 검색에 실패했어요. 다시 시도해 주세요.' : '검색 결과가 없어요.';
+  groups.append(h('div', { class: 'overview-search-empty' },
+    h('p', { class: 'overview-muted', role: 'status' }, status),
+    candidates.length && !loading ? h('button', {
+      class: 'btn', type: 'button',
+      onclick: needsKey ? openSettings : () => searchOverviewNotes(key, overviewQuery.trim().slice(0, 300), candidates),
+    }, iel(needsKey ? 'gear' : 'sparkle', 14), needsKey ? 'AI 연결 설정' : 'AI가 찾아드릴게요') : null));
 }
 
 function refreshOverviewAction() {

@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('api', {
   testKey: (name) => ipcRenderer.invoke('keys:test', name),
   organize: (payload) => ipcRenderer.invoke('ai:organize', payload),
   summarize: (payload) => ipcRenderer.invoke('ai:summarize', payload),
+  searchNotes: (payload) => ipcRenderer.invoke('ai:search-notes', payload),
   weather: (city) => ipcRenderer.invoke('weather:get', city),
   convertHeic: (buf) => ipcRenderer.invoke('image:heic', buf),
   onCursor: on('cursor'),

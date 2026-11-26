@@ -379,6 +379,8 @@
   font-weight: 700;
 }
 .overview-muted { margin: 8px 0 0; color: var(--mikkang-muted); font-size: 12px; line-height: 1.45; }
+.overview-search-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.overview-search-empty .overview-muted { margin: 0; }
 .mikkang-overview .bfilter { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
 .mikkang-overview .bfilter button {
   padding: 4px 9px;
