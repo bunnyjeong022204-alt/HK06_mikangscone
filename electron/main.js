@@ -10,6 +10,7 @@ const store = require('./store');
 const ai = require('./ai');
 const { watchForeground } = require('./foreground');
 const { getWeather } = require('./weather');
+const { displayEdge } = require('./display-edge');
 
 if (process.env.MIKKANG_USER_DATA) app.setPath('userData', process.env.MIKKANG_USER_DATA);
 const pet = require('../dist-pet/main/index.cjs');
@@ -32,9 +33,10 @@ let proPreview = false;
 
 const send = (ch, ...a) => { if (win && !win.isDestroyed()) win.webContents.send(ch, ...a); };
 
-function placeOverlay() {
+function placeOverlay(target) {
   if (!win || win.isDestroyed()) return;
-  display = screen.getPrimaryDisplay();
+  display = target || screen.getAllDisplays().find(d => d.id === display?.id) || screen.getPrimaryDisplay();
+  lastCursor = '';
   const wa = display.workArea;
   win.setBounds({ x: wa.x, y: wa.y, width: wa.width, height: wa.height });
   send('display', { width: wa.width, height: wa.height });
@@ -82,18 +84,23 @@ function startCursorFeed() {
   return setInterval(() => {
     if (!win || !display) return;
     const p = screen.getCursorScreenPoint();
-    const b = display.bounds, wa = display.workArea;
-    const onPrimary = p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + b.height;
-    let edge = null;
-    if (onPrimary && p.y > b.y + 40 && p.y < b.y + b.height - 40) {
-      if (p.x <= b.x + 1) edge = 'left';
-      else if (p.x >= b.x + b.width - 2) edge = 'right';
-    }
-    const msg = { x: p.x - wa.x, y: p.y - wa.y, edge, on: onPrimary };
-    const sig = `${msg.x},${msg.y},${edge}`;
+    const target = screen.getDisplayNearestPoint(p);
+    const wa = target.workArea;
+    const edge = displayEdge(p, target);
+    const msg = { x: p.x - wa.x, y: p.y - wa.y, edge, on: display.id === target.id, displayId: target.id };
+    const sig = `${msg.x},${msg.y},${edge},${target.id},${msg.on}`;
     if (sig !== lastCursor) { lastCursor = sig; send('cursor', msg); }
   }, 40);
 }
+
+ipcMain.handle('win:peek-display', (event, id, side) => {
+  if (event.sender !== win?.webContents) return false;
+  const point = screen.getCursorScreenPoint();
+  const target = screen.getDisplayNearestPoint(point);
+  if (target.id !== id || !side || displayEdge(point, target) !== side) return false;
+  if (display.id !== id) placeOverlay(target);
+  return true;
+});
 
 function startForegroundWatch() {
   const ownPids = () => app.getAppMetrics().map((m) => m.pid).concat(process.pid);
@@ -286,6 +293,8 @@ app.whenReady().then(() => {
     send('pet-changed');
   }, (anchor) => {
     if (!win) return;
+    const target = screen.getDisplayNearestPoint({ x: Math.round(anchor.x + anchor.width / 2), y: Math.round(anchor.y + anchor.height / 2) });
+    if (target.id !== display.id) placeOverlay(target);
     const origin = win.getBounds();
     send('cmd', 'pet-bookmarks', { ...anchor, x: anchor.x - origin.x, y: anchor.y - origin.y });
   }, (id) => send('pet-menu-selected', id),
@@ -300,9 +309,9 @@ app.whenReady().then(() => {
     clearInterval(cursorTimer);
     stopForeground();
   };
-  screen.on('display-metrics-changed', placeOverlay);
-  screen.on('display-added', placeOverlay);
-  screen.on('display-removed', placeOverlay);
+  for (const event of ['display-metrics-changed', 'display-added', 'display-removed']) {
+    screen.on(event, () => placeOverlay());
+  }
 });
 app.on('before-quit', () => { quitting = true; stopBackground(); });
 app.on('will-quit', () => globalShortcut.unregisterAll());

@@ -7,9 +7,9 @@
 }
 
 :root[data-theme-pack="vintage"] {
-  --f-ui: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-  --f-display: 'Gowun Dodum', 'Jua', sans-serif;
-  --f-hand: 'Gaegu', 'Gowun Dodum', cursive;
+  --f-ui: 'Busan Dandi Myeongjo', serif;
+  --f-display: var(--f-ui);
+  --f-hand: var(--f-ui);
   --mikkang-ink: #3e3427;
   --mikkang-muted: #6e5e4c;
   --mikkang-paper: #f2ead9;
@@ -51,7 +51,7 @@
 :root[data-theme-pack="vintage"] .overview-assistant { background-color: #dbe0c7; }
 :root[data-theme-pack="vintage"] .overview-avatar { border: 0; background: transparent; }
 :root[data-theme-pack="vintage"] .upcoming-card { --upcoming-accent: #acb494; --upcoming-day-bg: #e8dfcb; }
-:root[data-theme-pack="vintage"] .upcoming-head h2 { font-family: Georgia, serif; font-style: italic; }
+:root[data-theme-pack="vintage"] .upcoming-head h2 { font-family: var(--f-display); font-style: italic; }
 :root[data-theme-pack="vintage"] .upcoming-day { border-radius: 3px; }
 :root[data-theme-pack="vintage"] .overview-link { color: #875038; }
 

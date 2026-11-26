@@ -1,7 +1,7 @@
 (function (root) {
   'use strict';
   root.Chars.CHARS['block-dino'] = {
-    name: '블록 공룡',
+    name: '공룡',
     desc: '초록 블록 공룡',
     petId: 'block-dino',
     color: '#51bd15',

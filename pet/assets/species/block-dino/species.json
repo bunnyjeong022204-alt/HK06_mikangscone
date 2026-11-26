@@ -1,6 +1,6 @@
 {
   "id": "block-dino",
-  "displayName": "블록 공룡",
+  "displayName": "공룡",
   "version": "1.0.0",
   "animations": {
     "idle": {

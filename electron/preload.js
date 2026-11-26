@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('api', {
   weather: (city) => ipcRenderer.invoke('weather:get', city),
   convertHeic: (buf) => ipcRenderer.invoke('image:heic', buf),
   onCursor: on('cursor'),
+  showPeekDisplay: (id, side) => ipcRenderer.invoke('win:peek-display', id, side),
   onForeground: on('fg'),
   onDisplay: on('display'),
   onCommand: on('cmd'),

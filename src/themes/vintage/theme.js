@@ -1,6 +1,6 @@
 (function (root) {
   'use strict';
-  root.Chars.CHARS.vintageBear = { name: '테디 비서', desc: '보송한 빈티지 곰', petId: 'vintage-teddy', color: '#9a704b', ink: '#493525', className: 'vintage-bear-avatar' };
+  root.Chars.CHARS.vintageBear = { name: '곰돌이', desc: '보송한 빈티지 곰', petId: 'vintage-teddy', color: '#9a704b', ink: '#493525', className: 'vintage-bear-avatar' };
   root.Chars.CHARS.vintageBear.voice = {
     noteSummary: ({ notes, sections }) => `주인님, 메모 ${notes}건을 섹션 ${sections}곳에 정리해 두었습니다.`,
     description: '정중한 집사 곰돌이. 주인님을 부르며 다음 일정을 차분히 챙깁니다.',

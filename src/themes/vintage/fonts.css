@@ -1,0 +1,20 @@
+/* 부산단디명조 · 부산광역시 · 공공누리 제1유형
+   https://www.busan.go.kr/bhbusan/view */
+@font-face {
+  font-family: 'Busan Dandi Myeongjo';
+  src: url('fonts/DandiMyeongjo-L.woff2') format('woff2');
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Busan Dandi Myeongjo';
+  src: url('fonts/DandiMyeongjo-M.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Busan Dandi Myeongjo';
+  src: url('fonts/DandiMyeongjo-B.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}

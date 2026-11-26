@@ -23,7 +23,8 @@ const scripts = ['parse.js', 'characters.js', 'themes/themes.js', ...themeIds.fi
 // 테마의 로컬 글꼴과 이미지를 한 파일짜리 미리보기에 포함한다.
 const themeAssetTypes = { woff2: 'font/woff2', png: 'image/png', svg: 'image/svg+xml' };
 const themeCss = themeIds.filter((id) => fs.existsSync(path.join(THEME_DIR, id, 'theme.css'))).map((id) =>
-  fs.readFileSync(path.join(THEME_DIR, id, 'theme.css'), 'utf8').replace(/url\(['"]((?!data:|https?:)[^'"]+\.(woff2|png|svg))['"]\)/g, (_, relativeFile, extension) => {
+  ['fonts.css', 'theme.css'].filter(file => fs.existsSync(path.join(THEME_DIR, id, file)))
+    .map(file => fs.readFileSync(path.join(THEME_DIR, id, file), 'utf8')).join('\n').replace(/url\(['"]((?!data:|https?:)[^'"]+\.(woff2|png|svg))['"]\)/g, (_, relativeFile, extension) => {
     const asset = fs.readFileSync(path.join(THEME_DIR, id, relativeFile)).toString('base64');
     return `url('data:${themeAssetTypes[extension]};base64,${asset}')`;
   })).join('\n');
@@ -270,6 +271,7 @@ const page = `<title>귤메모 미리보기</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
 <style>
 ${R('styles.css')}
 ${designSystem}

@@ -13,6 +13,12 @@
     const template = document.createElement('template');
     template.innerHTML = html;
     for (const element of [...template.content.querySelectorAll('*')].reverse()) {
+      if (element.tagName === 'IMG' && /^\d+$/.test(element.dataset.photo ?? '')) {
+        const marker = document.createElement('img');
+        marker.dataset.photo = element.dataset.photo;
+        element.replaceWith(marker);
+        continue;
+      }
       if (!TAGS.has(element.tagName)) {
         element.replaceWith(...element.childNodes);
         continue;
@@ -22,12 +28,36 @@
     return template.innerHTML;
   }
 
-  function editor(note, h, { onChange, onBlur, onImages }) {
+  function editor(note, h, { onChange, onBlur, onImages, onView }) {
+    let savedRange;
+    const photos = () => [...el.querySelectorAll('img[data-photo]')];
+    function selectionRange() {
+      const selection = document.getSelection();
+      const range = selection.rangeCount && selection.getRangeAt(0);
+      return range && el.contains(range.commonAncestorContainer) ? range.cloneRange() : null;
+    }
+    function insertionRange() {
+      const range = selectionRange() || savedRange?.cloneRange();
+      if (range && el.contains(range.commonAncestorContainer)) return range;
+      const end = document.createRange();
+      end.selectNodeContents(el);
+      end.collapse(false);
+      return end;
+    }
+    function photoElement(src) {
+      return h('img', { src, 'data-photo': '', alt: '첨부 사진', draggable: 'false' });
+    }
     const sync = () => {
+      note.photos = photos().map((img, i) => {
+        img.dataset.photo = String(i);
+        return img.getAttribute('src');
+      });
       note.text = el.innerText.trimEnd();
-      note.basicHtml = cleanHtml(el.innerHTML);
+      const copy = el.cloneNode(true);
+      copy.querySelectorAll('img').forEach(img => img.removeAttribute('src'));
+      note.basicHtml = cleanHtml(copy.innerHTML);
       note.basicText = note.text;
-      el.classList.toggle('is-empty', !note.text.trim());
+      el.classList.toggle('is-empty', !note.text.trim() && !note.photos.length);
       onChange();
     };
     const el = h('div', {
@@ -38,7 +68,23 @@
       'aria-label': '메모 내용',
       'data-placeholder': '메모를 작성하세요…',
       oninput: sync,
-      onblur: onBlur,
+      onblur: () => { savedRange = selectionRange() || savedRange; onBlur(); },
+      onkeyup: () => { savedRange = selectionRange(); },
+      onpointerup: () => { savedRange = selectionRange(); },
+      onclick: e => { if (e.target.matches('img[data-photo]')) onView(photos().indexOf(e.target)); },
+      ondrop: e => {
+        if (e.dataTransfer.files.length) return;
+        e.preventDefault();
+        const text = e.dataTransfer.getData('text/plain');
+        if (!text) return;
+        const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+        if (range && el.contains(range.commonAncestorContainer)) {
+          const selection = document.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        document.execCommand('insertText', false, text);
+      },
       onpaste: (e) => {
         const images = [...(e.clipboardData?.files ?? [])];
         e.preventDefault();
@@ -50,7 +96,35 @@
     } else {
       el.textContent = note.text;
     }
-    el.classList.toggle('is-empty', !note.text.trim());
+    const shown = new Set();
+    for (const marker of photos()) {
+      const index = Number(marker.dataset.photo);
+      if (!shown.has(index) && /^data:image\//.test(note.photos[index])) {
+        marker.replaceWith(photoElement(note.photos[index]));
+        shown.add(index);
+      } else marker.remove();
+    }
+    note.photos.forEach((src, index) => {
+      if (!shown.has(index) && /^data:image\//.test(src)) el.append(photoElement(src));
+    });
+    el.classList.toggle('is-empty', !note.text.trim() && !note.photos.length);
+    function insertPhotos(sources, range) {
+      if (!el.contains(range.commonAncestorContainer)) range = insertionRange();
+      range.collapse(false);
+      const fragment = document.createDocumentFragment();
+      for (const src of sources) fragment.append(photoElement(src));
+      const last = fragment.lastChild;
+      range.insertNode(fragment);
+      range.setStartAfter(last);
+      range.collapse(true);
+      if (!last.nextSibling) last.after(document.createElement('br'));
+      el.focus();
+      const selection = document.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      savedRange = range.cloneRange();
+      sync();
+    }
     const toolbar = h('div', { class: 'basic-format', role: 'group', 'aria-label': '메모 서식' });
     const toggle = h('button', { class: 'basic-format-toggle', type: 'button', 'aria-label': '서식 도구',
       'aria-expanded': 'false', onmousedown: (e) => e.preventDefault(), onclick: () => {
@@ -72,7 +146,7 @@
           sync();
         },
       })));
-    return { el, toolbar };
+    return { el, toolbar, insertionRange, insertPhotos };
   }
 
   window.BasicNote = { editor };

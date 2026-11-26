@@ -180,8 +180,8 @@ const isEmpty = (n) => !n.text.trim() && !n.title.trim() && !n.keyword.trim() &&
 /* ─────────── 섹션 (큰 책갈피) ─────────── */
 // 책갈피는 섹션(업무·생활·아이디어 …) 단위로 붙고, 섹션을 누르면 그 안의 메모 책갈피가 펼쳐진다.
 const SEC_COLORS = [
-  { bg: 'var(--mikkang-blue)', ink: '#2e4845' }, { bg: 'var(--mikkang-pink)', ink: '#5a2331' },
-  { bg: 'var(--mikkang-yellow)', ink: '#5a4712' }, { bg: 'var(--section-green, #cbdccc)', ink: '#2f4a2a' },
+  { bg: 'var(--mikkang-blue)', ink: 'var(--section-theme-ink, #2e4845)' }, { bg: 'var(--mikkang-pink)', ink: 'var(--section-theme-ink, #5a2331)' },
+  { bg: 'var(--mikkang-yellow)', ink: 'var(--section-theme-ink, #5a4712)' }, { bg: 'var(--section-green, #cbdccc)', ink: '#2f4a2a' },
   { bg: 'var(--section-cream, #eee3bd)', ink: '#514531' }, { bg: 'var(--section-orange, #f7d0a9)', ink: '#5c3214' },
   { bg: 'var(--section-gray, #eae9df)', ink: '#454a43' }, { bg: 'var(--section-red, #e99868)', ink: '#48291a' },
 ];
@@ -208,7 +208,7 @@ function addSection(name) {
   const x = { id: 's-' + uid(), name, color: S.sections.length % SEC_COLORS.length };
   S.sections.push(x); save(); return x;
 }
-let openSec = null, addingSec = false, dockFolded = false, indexCollapsed = false, modalKind = '';
+let openSec = null, addingSec = false, dockFolded = false, modalKind = '';
 function toggleSection(id) { openSec = openSec === id ? null : id; renderTabs(); }
 
 let ctx = 'desktop', forcedMode = null;
@@ -226,8 +226,9 @@ let mood = 'idle', moodT = 0;
 /* ─────────── 책갈피와 전체보기 표시 ─────────── */
 function applyMode() {
   const keepDockVisible = (forcedMode || S.settings.modeOverride) === 'desktop' && !dockFolded;
-  const showDock = keepDockVisible || summoned || !!openId || !petPresent;
+  const showDock = keepDockVisible || summoned || !!openId || (!petPresent && !dockFolded);
   const st = $('#stage');
+  st.classList.toggle('pet-hidden', !petPresent);
   st.classList.toggle('dock-hidden', !showDock);
   if (!showDock && $('#bookmark-pet')) placeBookmarkPet(); else queuePerch();
   if (showDock && (peek.open || edgeSide)) closePeek();
@@ -253,19 +254,7 @@ function updateHit() {
 function renderTabs() {
   queuePerch();
   const dock = $('#dock'); dock.replaceChildren();
-  dock.classList.toggle('index-collapsed', indexCollapsed);
   const secs = [...S.sections]; if (notesIn('').length) secs.push(INBOX);
-  if (indexCollapsed) {
-    for (const x of secs) {
-      const color = secColor(x);
-      dock.append(h('button', { class: 'tab index-stripe', type: 'button', title: x.name,
-        'aria-label': `${x.name} 책갈피 펼치기`, style: `--tc:${color.bg}`, onclick: () => {
-          indexCollapsed = false; openSec = x.id; renderTabs();
-          $('.tab.sec.exp')?.focus({ preventScroll: true });
-        } }));
-    }
-    return;
-  }
   dock.append(h('button', {
     class: 'tab overview-tab', type: 'button', 'aria-expanded': String(modalKind === 'board'),
     'aria-controls': 'modal', onclick: () => modalKind === 'board' ? closeBoard() : openBoard(),
@@ -301,9 +290,8 @@ function renderTabs() {
     dock.append(h('button', { class: 'tab add secadd', type: 'button', title: '큰 책갈피(섹션) 만들기', onclick: () => { addingSec = true; renderTabs(); api.focus(); setTimeout(() => { const i = $('#secNew'); i && i.focus(); }, 40); } },
       h('span', { class: 'k', style: 'display:flex;align-items:center;gap:5px' }, iel('folder', 14), '섹션 추가')));
   }
-  if (secs.length) dock.append(h('button', { class: 'tab index-fold', type: 'button', onclick: () => {
-    indexCollapsed = true; renderTabs(); $('.index-stripe')?.focus({ preventScroll: true });
-  } }, '책갈피 접기'));
+  if (!petPresent) dock.append(h('button', { class: 'tab', type: 'button', 'aria-controls': 'dock', 'aria-expanded': 'true',
+    onclick: () => { togglePetBookmarks(); $('#bookmark-expand').focus({ preventScroll: true }); } }, '책갈피 접기'));
 }
 function trashNote(note) {
   const i = S.notes.indexOf(note);
@@ -332,10 +320,13 @@ function restoreNote(id) {
 
 function bindTrashDrag(tab, note) {
   let press, moved = false;
-  const zone = $('#trash-edge');
-  const edgeDistance = (e) => {
+  const label = $('.k', tab);
+  const distance = (e) => (e.clientX - press.x) * (S.settings.side === 'left' ? -1 : 1);
+  const ready = (e) => {
     const r = $('#stage').getBoundingClientRect();
-    return S.settings.side === 'left' ? e.clientX - r.left : r.right - e.clientX;
+    const edge = S.settings.side === 'left' ? e.clientX - r.left : r.right - e.clientX;
+    const outward = distance(e);
+    return outward >= 7 && (outward >= 32 || edge <= 24) && e.clientY >= r.top && e.clientY <= r.bottom;
   };
   tab.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 || !e.isPrimary) return;
@@ -344,21 +335,23 @@ function bindTrashDrag(tab, note) {
   });
   tab.addEventListener('pointermove', (e) => {
     if (press?.id !== e.pointerId) return;
-    const outward = (e.clientX - press.x) * (S.settings.side === 'left' ? -1 : 1);
+    const outward = distance(e);
     if (!moved && outward < 7) return;
     moved = true; dragging = true; setInter(true);
-    zone.hidden = false;
-    zone.classList.toggle('ready', edgeDistance(e) <= 24 && outward >= 7);
+    const armed = ready(e);
+    tab.classList.toggle('trash-ready', armed);
+    tab.style.translate = (Math.min(18, Math.max(0, outward) / 2) * (S.settings.side === 'left' ? -1 : 1)) + 'px 0';
+    label.textContent = armed ? '놓아서 버리기' : memoTitle(note) || '새 메모';
   });
   const finish = (e) => {
     if (press?.id !== e.pointerId) return;
-    const outward = (e.clientX - press.x) * (S.settings.side === 'left' ? -1 : 1);
-    const rect = $('#stage').getBoundingClientRect();
-    const drop = moved && e.type === 'pointerup' && outward >= 7 && edgeDistance(e) <= 24 &&
-      e.clientY >= rect.top && e.clientY <= rect.bottom;
+    const drop = moved && e.type === 'pointerup' && ready(e);
     press = null;
     if (!moved) return;
-    zone.hidden = true; dragging = false; updateHit();
+    tab.classList.remove('trash-ready');
+    tab.style.translate = '';
+    label.textContent = memoTitle(note) || '새 메모';
+    dragging = false; updateHit();
     if (drop) trashNote(note);
   };
   tab.addEventListener('pointerup', finish);
@@ -440,7 +433,6 @@ function togglePetBookmarks(anchor) {
   perchOrigin = anchor;
   summoned = true;
   dockFolded = false;
-  indexCollapsed = false;
   closeBubble();
   renderTabs();
   applyMode();
@@ -451,6 +443,18 @@ function togglePetBookmarks(anchor) {
 /* ─────────── 메모지 카드 ─────────── */
 function perchHTML() { return C.charHTML(S.settings.character, S.settings.customChar); }
 function charColor() { return C.character(S.settings.character).color; }
+function placeNote(note) {
+  const sheet = $('#sheet');
+  const pos = note?.position;
+  if (!Number.isFinite(pos?.x) || !Number.isFinite(pos?.y)) {
+    for (const key of ['left', 'right', 'top']) sheet.style.removeProperty(key);
+    return;
+  }
+  sheet.style.right = 'auto';
+  sheet.style.left = clamp(pos.x, 0, Math.max(0, W() - sheet.offsetWidth)) + 'px';
+  sheet.style.top = clamp(pos.y, 0, Math.max(0, H() - sheet.offsetHeight)) + 'px';
+}
+let activeNoteEditor;
 function renderCard(n) {
   const t = TH(n.theme), sheet = $('#sheet');
   const basic = !hasPremiumMemo();
@@ -494,12 +498,9 @@ function renderCard(n) {
     void addPhotos(n, images);
     return true;
   };
-  const editor = basic ? window.BasicNote.editor(n, h, { onChange: save, onBlur, onImages }) : null;
-  const body = editor?.el ?? h('textarea', { class: 'body', placeholder: '여기에 메모를 적어요.\n예) 내일 12시까지 회의자료 제출', 'aria-label': '메모 내용',
-    oninput: (e) => { n.text = e.target.value; save(); },
-    onblur: onBlur,
-    onpaste: (e) => { if (onImages(e.clipboardData?.files)) e.preventDefault(); } });
-  if (!basic) body.value = n.text;
+  const editor = window.BasicNote.editor(n, h, { onChange: save, onBlur, onImages, onView: (i) => openViewer(n, i) });
+  activeNoteEditor = editor;
+  const body = editor.el;
   const paperShape = pp && tp.paperShapes?.length > 1 && h('select', { class: 'paper-shape secsel', title: '메모지 모양', 'aria-label': '메모지 모양',
     onchange: (event) => {
       n.paperShape = event.target.value;
@@ -509,15 +510,6 @@ function renderCard(n) {
   const content = h('div', { class: 'content' }, basic ? null : titleInput, h('div', { class: 'ttlrow' }, sectionPicker(n), paperShape));
   const writing = h('div', { class: 'note-writing' }, body);
   content.append(writing);
-  if (n.photos.length) writing.append(h('div', { class: 'photos' },
-    n.photos.map((src, i) =>
-      h('div', { class: 'ph', style: `--r:${(i % 2 ? 1 : -1) * (1 + i % 3)}deg` },
-        h('button', { type: 'button', class: 'pv-open', 'aria-label': `사진 ${i + 1} 크게 보기`, title: '크게 보기', onclick: () => openViewer(n, i) },
-          h('img', { src: /^data:image\//.test(src) ? src : '', alt: `첨부 사진 ${i + 1}` })),
-        h('div', { class: 'pa' },
-          h('button', { type: 'button', 'aria-label': '스티커로 붙이기', title: '스티커로 붙이기', onclick: () => photoToSticker(n, i), html: ico('star', 13) }),
-          h('button', { type: 'button', 'aria-label': '사진 삭제', title: '삭제', onclick: () => { n.photos.splice(i, 1); save(); renderCard(n); }, html: ico('x', 13) })))),
-    n.photos.length < MAX_PHOTOS ? filePicker({ cls: 'ph-add', label: '사진 더 넣기', onFiles: (fs) => addPhotos(n, fs) }, iel('plus', 20)) : null));
   content.append(h('div', { class: 'chips', id: 'chips' }));
   card.append(content);
   card.append(h('div', { class: 'stk-layer', id: 'stkLayer' }));
@@ -525,7 +517,7 @@ function renderCard(n) {
 
   card.addEventListener('dragover', (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); card.classList.add('drop'); } });
   card.addEventListener('dragleave', (e) => { if (!card.contains(e.relatedTarget)) card.classList.remove('drop'); });
-  card.addEventListener('drop', (e) => { card.classList.remove('drop'); const fs = imageFiles(e.dataTransfer?.files); if (fs.length) { e.preventDefault(); addPhotos(n, fs); } });
+  card.addEventListener('drop', (e) => { card.classList.remove('drop'); const fs = imageFiles(e.dataTransfer?.files); if (fs.length) { e.preventDefault(); const point = document.caretRangeFromPoint(e.clientX, e.clientY); addPhotos(n, fs, point && body.contains(point.commonAncestorContainer) ? point : undefined); } });
   card.addEventListener('pointerdown', (e) => { if (!e.target.closest('.stk,.sbar') && selStk) { selStk = null; renderStickers(n); } });
 
   const pal = h('div', { class: 'pal', hidden: true, role: 'menu', 'aria-label': '스티커' }, (tp?.stickers ?? PAL).map((k) =>
@@ -547,6 +539,7 @@ function renderCard(n) {
       onclick: () => {
         basicDetails = !basicDetails;
         sheet.classList.toggle('basic-details', basicDetails);
+        placeNote(n);
         menu.setAttribute('aria-expanded', String(basicDetails));
       } }, '⋯');
     card.prepend(h('header', { class: 'basic-note-head' },
@@ -565,13 +558,35 @@ function renderCard(n) {
     if (Number.isFinite(value) && value > 0) sheet.style.setProperty('--note-' + key, value + 'px');
     else sheet.style.removeProperty('--note-' + key);
   }
-  const resize = h('button', { type: 'button', class: 'note-resize', title: '드래그하거나 방향키로 크기 조절', 'aria-label': '메모 크기 조절' }, '◢');
+  const grip = h('div', { class: 'note-move', title: '드래그해서 메모 이동' });
+  card.append(grip);
+  card.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button !== 0 || !(e.target === grip || e.target.matches('.basic-note-head'))) return;
+    const startX = sheet.offsetLeft, startY = sheet.offsetTop;
+    const move = (p) => {
+      if (p.pointerId !== e.pointerId) return;
+      n.position = { x: startX + p.clientX - e.clientX, y: startY + p.clientY - e.clientY };
+      placeNote(n);
+      n.position = { x: sheet.offsetLeft, y: sheet.offsetTop };
+    };
+    card.setPointerCapture(e.pointerId);
+    dragging = true;
+    card.addEventListener('pointermove', move);
+    card.addEventListener('lostpointercapture', () => {
+      card.removeEventListener('pointermove', move);
+      dragging = false; updateHit(); save();
+    }, { once: true });
+  });
+  const resize = h('button', { type: 'button', class: 'note-resize', title: '드래그하거나 방향키로 크기 조절', 'aria-label': '메모 크기 조절' });
   const direction = () => S.settings.side === 'right' ? -1 : 1;
   function sizeTo(width, height) {
     const top = sheet.offsetTop;
     const reserve = basic && !basicDetails ? 16 : 120;
+    const right = sheet.offsetLeft + card.offsetWidth;
     n.size = { width: clamp(width, 280, W() - 32), height: clamp(height, 230, H() - top - reserve) };
     for (const [key, value] of Object.entries(n.size)) sheet.style.setProperty('--note-' + key, value + 'px');
+    if (n.position && direction() === -1) n.position.x = right - card.offsetWidth;
+    placeNote(n);
     save();
   }
   resize.onpointerdown = (event) => {
@@ -591,6 +606,7 @@ function renderCard(n) {
   };
   card.append(resize);
   sheet.replaceChildren(card, bar);
+  placeNote(n);
   renderStickers(n); renderChips(n);
 }
 
@@ -721,18 +737,29 @@ async function readPhoto(file, max = 1024) {
   const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
   return c.toDataURL('image/jpeg', 0.82);
 }
-async function addPhotos(n, files) {
-  let added = 0;
-  for (const f of files) {
-    if (n.photos.length >= MAX_PHOTOS) { toast({ title: `사진은 메모 하나에 ${MAX_PHOTOS}장까지 넣을 수 있어요`, ttl: 2600 }); break; }
-    try { n.photos.push(await readPhoto(f)); added++; } catch (err) { toast({ title: '사진을 넣지 못했어요', body: `${f.name}: ${err.message}`, ttl: 5000 }); }
+async function addPhotos(n, files, dropRange) {
+  const editor = openId === n.id ? activeNoteEditor : null;
+  const range = dropRange || editor?.insertionRange();
+  const sources = [];
+  for (const file of files) {
+    if (sources.length + n.photos.length >= MAX_PHOTOS) break;
+    try { sources.push(await readPhoto(file)); }
+    catch (err) { toast({ title: '사진을 넣지 못했어요', body: file.name + ': ' + err.message, ttl: 5000 }); }
   }
-  if (added) {
-    n.viewedAt = Date.now(); save(); renderTabs();
-    if (openId === n.id) { renderCard(n); perchSay(keys.anthropic ? `사진 ${added}장 넣었어요. 사진 속 일정도 읽어드릴게요!` : `사진 ${added}장 넣었어요.`, 3500); }
-    else say(`'${memoTitle(n) || '새 메모'}' 메모에 사진 ${added}장을 넣었어요.`, { ttl: 5000, actions: [{ label: '메모 보기', run: () => openNote(n.id) }] });
+  const available = Math.max(0, MAX_PHOTOS - n.photos.length);
+  if (files.length > available) toast({ title: '사진은 메모 하나에 ' + MAX_PHOTOS + '장까지 넣을 수 있어요', ttl: 2600 });
+  sources.splice(available);
+  if (!sources.length) return 0;
+  if (editor?.el.isConnected && openId === n.id) editor.insertPhotos(sources, range);
+  else {
+    n.photos.push(...sources);
+    if (openId === n.id) renderCard(n);
   }
-  return added;
+  n.viewedAt = Date.now(); save(); renderTabs();
+  const message = '사진 ' + sources.length + '장 넣었어요.';
+  if (openId === n.id) perchSay(message, 3500);
+  else say(message, { ttl: 5000, actions: [{ label: '메모 보기', run: () => openNote(n.id) }] });
+  return sources.length;
 }
 async function openPhotoNote(files) {
   const existing = openId && byId(openId);
@@ -793,6 +820,19 @@ function bindImageDrop(el, target, makeNew) {
 }
 
 /* 사진 크게 보기 */
+function removeNotePhoto(n, i) {
+  if (n.basicHtml) {
+    const template = document.createElement('template');
+    template.innerHTML = n.basicHtml;
+    for (const img of template.content.querySelectorAll('img[data-photo]')) {
+      const index = Number(img.dataset.photo);
+      if (index === i) img.remove();
+      else if (index > i) img.dataset.photo = String(index - 1);
+    }
+    n.basicHtml = template.innerHTML;
+  }
+  return n.photos.splice(i, 1)[0];
+}
 function openViewer(n, i) {
   closePeek(); closeBubble();
   modalOpen = true; updateHit();
@@ -809,7 +849,7 @@ function openViewer(n, i) {
         n.photos.length > 1 ? h('button', { class: 'btn icon', type: 'button', 'aria-label': '다음 사진', onclick: () => { i++; show(); }, html: ico('fold', 16) }) : null,
         h('span', { style: 'flex:1' }),
         h('button', { class: 'btn', type: 'button', onclick: () => { closeViewer(); photoToSticker(n, i); } }, iel('star', 15), '스티커로 붙이기'),
-        h('button', { class: 'btn', type: 'button', onclick: () => { n.photos.splice(i, 1); save(); if (openId === n.id) renderCard(n); show(); } }, iel('trash', 15), '삭제'),
+        h('button', { class: 'btn', type: 'button', onclick: () => { removeNotePhoto(n, i); save(); if (openId === n.id) renderCard(n); show(); } }, iel('trash', 15), '삭제'),
         h('button', { class: 'btn primary icon', type: 'button', 'aria-label': '닫기', onclick: closeViewer, html: ico('x', 16) }))));
   };
   m.onpointerdown = (e) => { if (e.target === m) closeViewer(); };
@@ -823,7 +863,7 @@ function closeViewer() {
   modalOpen = false; const m = $('#modal'); m.hidden = true; m.replaceChildren(); m.onpointerdown = null; updateHit();
 }
 function photoToSticker(n, i) {
-  const src = n.photos.splice(i, 1)[0];
+  const src = removeNotePhoto(n, i);
   n.stickers.push({ id: uid(), type: 'photo', src, x: 290 + Math.random() * 30, y: 250 + Math.random() * 60, s: 1, rot: Math.round(Math.random() * 16 - 8) });
   selStk = n.stickers[n.stickers.length - 1].id; save(); renderCard(n);
 }
@@ -1224,18 +1264,25 @@ function closeBubble() { clearTimeout(bubble.t); bubble = { open: false, menu: f
 
 /* ─────────── 가장자리 미리보기 ─────────── */
 let edgeT = 0, edgeSide = null;
+const edgeKey = c => c.edge ? (c.displayId ?? '') + '/' + c.edge : null;
 function recentNotes() { return S.notes.filter((n) => !isEmpty(n)).sort((a, b) => (b.viewedAt || b.createdAt) - (a.viewedAt || a.createdAt)).slice(0, 5); }
 function canPeek() {
   return S.settings.peek && $('#stage').classList.contains('dock-hidden') && !openId && !modalOpen && !bubble.menu && !dragging;
 }
 function handleEdge(c) {
   if (!canPeek()) { clearTimeout(edgeT); edgeSide = null; return; }
+  if (peek.open && !c.on && c.displayId !== undefined) closePeek();
   if (c.edge && !peek.open) {
-    const el = document.elementFromPoint(c.edge === 'left' ? 1 : W() - 2, c.y);
+    const el = c.on && document.elementFromPoint(c.edge === 'left' ? 1 : W() - 2, c.y);
     if (el && el.closest('.tab,.sheet')) return;
-    if (edgeSide !== c.edge) {
-      edgeSide = c.edge; clearTimeout(edgeT);
-      edgeT = setTimeout(() => { if (cursor.edge === edgeSide) openPeek(edgeSide, cursor.y); }, +S.settings.peekDelay || 350);
+    const key = edgeKey(c);
+    if (edgeSide !== key) {
+      edgeSide = key; clearTimeout(edgeT);
+      edgeT = setTimeout(async () => {
+        if (edgeSide !== key || !canPeek()) return;
+        if (!c.on && api.showPeekDisplay && !await api.showPeekDisplay(c.displayId, c.edge)) return;
+        if (edgeSide === key && edgeKey(cursor) === key) openPeek(c.edge, cursor.y);
+      }, +S.settings.peekDelay || 350);
     }
   } else if (!c.edge) { edgeSide = null; clearTimeout(edgeT); }
 }
@@ -1245,7 +1292,7 @@ function openPeek(side, y) {
   const el = $('#peek');
   el.className = 'peek ' + side;
   el.hidden = false;
-  el.style.top = clamp(y - 150, 50, H() - 380) + 'px';
+  el.style.top = clamp(y - 150, 12, Math.max(12, H() - 380)) + 'px';
   renderPeek();
   requestAnimationFrame(() => { if (peek.open) { el.classList.add('open'); updateHit(); } });
 }
@@ -1282,7 +1329,7 @@ function closePeek() {
 }
 function dismissPeek() {
   closePeek();
-  edgeSide = cursor.edge;
+  edgeSide = edgeKey(cursor);
 }
 $('#peek').addEventListener('wheel', (e) => { if (peek.list.length < 2) return; e.preventDefault(); peek.idx = (peek.idx + (e.deltaY > 0 ? 1 : -1) + peek.list.length) % peek.list.length; renderPeek(); }, { passive: false });
 
@@ -1803,6 +1850,7 @@ async function refreshPetControls(action, value) {
   activePetId = state.species.find((item) => item.selected)?.id;
   if (petPresent !== state.present) {
     petPresent = state.present;
+    renderTabs();
     applyMode();
   }
   queuePerch();
@@ -2011,7 +2059,7 @@ function placeBookmarkPet() {
   const tab = $('.overview-tab');
   const species = activePetId || petIdFor(S.settings.character);
   const show = petPresent && !modalOpen && tab?.getClientRects().length && (species || S.settings.customChar);
-  const size = S.settings.petSize || 80;
+  const size = Math.round((S.settings.petSize || 80) * 0.6);
   $('#stage').classList.toggle('pet-on-bookmarks', !!show);
   $('#stage').style.setProperty('--bookmark-pet-size', size + 'px');
   pet.hidden = !show;
@@ -2022,17 +2070,29 @@ function placeBookmarkPet() {
   pet.style.backgroundImage = !['mono-cat','block-dino','pastel-octopus','vintage-teddy'].includes(species) && S.settings.customChar ? 'url(' + JSON.stringify(S.settings.customChar) + ')' : '';
   const rect = tab.getBoundingClientRect(), stage = $('#stage').getBoundingClientRect();
   pet.style.left = clamp(rect.right - stage.left - size - 4, 0, W() - size) + 'px';
-  pet.style.top = Math.max(0, rect.top - stage.top - size * .88) + 'px';
+  const seatLevel = { 'mono-cat': .96, 'block-dino': .76 };
+  const perchHeight = size * (seatLevel[species] ?? .88);
+  pet.style.top = Math.max(0, rect.top - stage.top - perchHeight) + 'px';
   if (perchOrigin && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const dx = perchOrigin.x - pet.offsetLeft, dy = perchOrigin.y - pet.offsetTop;
-    pet.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }],
-      { duration: 300, easing: 'ease-out' });
+    const lift = Math.min(64, pet.offsetTop);
+    const arcX = Math.abs(dx) < size ? (pet.offsetLeft < W() / 2 ? size : -size) * .65 : 0;
+    const frames = Array.from({ length: 17 }, (_, i) => {
+      const t = i / 16;
+      const x = dx * (1 - t) + arcX * Math.sin(Math.PI * t);
+      const y = dy * (1 - t) ** 2 - lift * Math.sin(Math.PI * t);
+      return { transform: `translate(${x}px, ${y}px)` };
+    });
+    pet.animate(frames, { duration: 520, easing: 'ease-in-out' });
   }
   perchOrigin = null;
 }
 function bindGlobal() {
-  const perch = h('button', { id: 'bookmark-pet', hidden: true, type: 'button', 'aria-label': '책갈피 펫 · 오른쪽 버튼을 길게 눌러 브리핑 듣기' });
-  $('#stage').append(perch, h('div', { id: 'trash-edge', hidden: true }, iel('trash', 16), '놓아서 버리기'));
+  const perch = h('button', { id: 'bookmark-pet', hidden: true, type: 'button',
+    'aria-label': '책갈피 닫기 · 오른쪽 버튼을 길게 눌러 브리핑 듣기', onclick: () => togglePetBookmarks() });
+  const expand = h('button', { id: 'bookmark-expand', class: 'tab', type: 'button', 'aria-controls': 'dock', 'aria-expanded': 'false',
+    onclick: () => { togglePetBookmarks(); $('.overview-tab')?.focus({ preventScroll: true }); } }, '책갈피 펼치기');
+  $('#stage').append(perch, expand);
   let pressTimer = 0, briefed = false;
   const cancel = () => { clearTimeout(pressTimer); pressTimer = 0; };
   perch.oncontextmenu = (e) => e.preventDefault();
@@ -2051,7 +2111,7 @@ function bindGlobal() {
   $('#dock').addEventListener('scroll', queuePerch);
 
   api.onCursor((c) => { cursor = c; if (!c.on) cursor.x = -1; updateHit(); handleEdge(c); });
-  document.addEventListener('mousemove', (e) => { cursor = { x: e.clientX, y: e.clientY, edge: cursor.edge, on: true }; updateHit(); });
+  document.addEventListener('mousemove', (e) => { cursor = { ...cursor, x: e.clientX, y: e.clientY }; updateHit(); });
   api.onForeground((f) => {
     if (f.kind === 'self') return;
     ctx = f.kind === 'app' ? 'app' : 'desktop';
@@ -2130,7 +2190,7 @@ function bindGlobal() {
     if (toolbar && editor) toolbar.toggleAttribute('data-selection',
       !!selection?.rangeCount && !selection.isCollapsed && editor.contains(selection.getRangeAt(0).commonAncestorContainer));
   });
-  addEventListener('resize', () => { queuePerch(); if (bubble.open) placeBubble(); });
+  addEventListener('resize', () => { queuePerch(); if (openId) placeNote(byId(openId)); if (bubble.open) placeBubble(); });
 }
 
 async function boot() {

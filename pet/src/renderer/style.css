@@ -26,7 +26,8 @@ body {
 .pet-briefing {
   position: absolute;
   box-sizing: border-box;
-  width: min(240px, calc(100vw - 24px));
+  width: max-content;
+  max-width: min(240px, calc(100vw - 24px));
   padding: 12px 14px;
   border: 1.5px solid #b9c5ad;
   border-radius: 14px;

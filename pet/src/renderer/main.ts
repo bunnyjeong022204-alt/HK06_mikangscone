@@ -9,6 +9,7 @@ import { PetQuickMenu } from './PetQuickMenu';
 import { EmptyRosterPaper } from './EmptyRosterPaper';
 import { FishingRig, type FishingPose } from './FishingRig';
 import { BehaviorController } from './BehaviorController';
+import { advanceFlight, type Flight } from './throwMotion';
 import type { Rect, Vec2 } from './types';
 import { motionCue, personalityOf, poseFor, type MotionCue } from './petMotion';
 import { MAX_DROPPED_PHOTOS, MAX_PHOTO_DROP_BYTES, type DroppedPhoto } from '../shared/ipcContract';
@@ -16,6 +17,7 @@ import { MAX_DROPPED_PHOTOS, MAX_PHOTO_DROP_BYTES, type DroppedPhoto } from '../
 interface Companion {
   original: SpeciesConfig;
   paused: boolean;
+  flight?: Flight;
   species: SpeciesConfig;
   state: PetStateMachine;
   animation: AnimationController;
@@ -106,6 +108,7 @@ async function main(): Promise<void> {
   const floorX = (x: number, size: number) => Math.max(0, Math.min(Math.max(0, bounds.width - size), x));
   const petPosition = (pet: Companion) => {
     const size = petSize;
+    if (pet.flight) return pet.flight.position;
     return { x: floorX(pet.toyPlay?.position.x ?? pet.behavior.getPosition().x, size), y: Math.max(0, bounds.height - size) };
   };
   let pets: Companion[] = [];
@@ -395,16 +398,17 @@ async function main(): Promise<void> {
     grab.dragging = true;
     pet.cue = undefined;
     pet.state.transition('idle');
-    pet.state.transition('walk');
+    pet.behavior.interruptForDrag();
     hush(pet);
     reactWithLine(pet, 'grab', now);
   }
   function positionHeld(grab: NonNullable<typeof held>) {
     const size = petSize;
     const x = floorX(pointer.x - grab.offset.x, size);
-    const previousX = grab.pet.behavior.getPosition().x;
+    const previousX = petPosition(grab.pet).x;
     if (x !== previousX) grab.pet.facing = x < previousX ? 6 : 2;
-    grab.pet.behavior.setPosition({ x, y: 0 });
+    const y = Math.max(0, Math.min(bounds.height - size, pointer.y - grab.offset.y));
+    grab.pet.flight = { position: { x, y }, velocity: { x: 0, y: 0 } };
   }
   function moveHeld(event: PointerEvent) {
     if (!event.isPrimary || (held && held.pointerId !== event.pointerId)) return;
@@ -453,6 +457,7 @@ async function main(): Promise<void> {
     const offset = { x: pointer.x - pos.x, y: pointer.y - pos.y };
     held = { pet, pointerId: event.pointerId, start: { ...pointer }, offset, region: faceRegion(offset),
       since: performance.now(), dragging: false };
+    if (pet.flight) { beginDrag(held); positionHeld(held); }
     canvas.setPointerCapture(event.pointerId);
   });
   function release(event: Event) {
@@ -472,8 +477,7 @@ async function main(): Promise<void> {
     const { pet, dragging, offset, region } = held;
     held = null;
     if (dragging) {
-      pet.cue = undefined;
-      pet.behavior.resumeAfterDrag();
+      cue(pet, 'fly', performance.now(), pet.facing >= 5 ? -1 : 1);
     } else if (event.type === 'pointerup') {
       const now = performance.now();
       pet.paused = !pet.paused;
@@ -805,7 +809,19 @@ async function main(): Promise<void> {
       const scale = pet.species.behavior.spriteScale;
       const before = petPosition(pet);
       const previousState = pet.state.getState();
-      if (!pet.paused && rightPress?.pet !== pet && !fileDrag && pet.chasing && held?.pet !== pet) {
+      if (pet.flight) {
+        if (held?.pet !== pet) {
+          const step = advanceFlight(pet.flight, delta / 1000, Math.max(0, bounds.width - petSize), Math.max(0, bounds.height - petSize));
+          pet.flight = step;
+          if (step.landed) {
+            pet.behavior.setPosition({ x: step.position.x, y: 0 });
+            pet.flight = undefined;
+            pet.behavior.resumeAfterDrag();
+            if (pet.paused) pet.state.transition('idle');
+            cue(pet, 'land', now, pet.facing >= 5 ? -1 : 1);
+          }
+        }
+      } else if (!pet.paused && rightPress?.pet !== pet && !fileDrag && pet.chasing && held?.pet !== pet) {
         followCursor(pet, delta);
       } else if (!pet.paused && rightPress?.pet !== pet && !fileDrag && playWithToy(pet, now, delta)) { /* Toy pose drives position while active. */ }
       else if (!pet.paused && !fileDrag && held?.pet !== pet && !pet.cue && now >= pet.speakingUntil) {

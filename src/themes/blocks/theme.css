@@ -58,7 +58,7 @@
   background: color-mix(in srgb, var(--brick) 50%, white);
   box-shadow: inset 0 -2px #29251d24;
 }
-[data-theme-pack="blocks"] .dock .tab:not(.index-stripe)::before,
+[data-theme-pack="blocks"] .dock .tab::before,
 [data-theme-pack="blocks"] .overview-card::before,
 [data-theme-pack="blocks"] .upcoming-day::before {
   content: '';
