@@ -11,7 +11,8 @@ export function landingReaction(throwSpeed: number, landingSpeed: number, wallSp
   if (throwSpeed > 0 && throwSpeed <= GENTLE_THROW_SPEED_LIMIT) {
     return wallSpeed > 460 || landingSpeed > 820 ? 'hurt' : 'playful';
   }
-  if (landingSpeed > 660 || wallSpeed > 460) return 'hurt';
+  const landingLimit = throwSpeed === 0 ? 400 : 660;
+  if (landingSpeed > landingLimit || wallSpeed > 460) return 'hurt';
   return undefined;
 }
 

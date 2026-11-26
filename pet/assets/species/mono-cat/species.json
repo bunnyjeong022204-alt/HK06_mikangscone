@@ -7,76 +7,61 @@
       "sheet": "sprites/idle.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 5,
-      "fps": 4,
-      "loop": true,
-      "leftSheet": "sprites/idle-left.png"
+      "frameCount": 6,
+      "fps": 5,
+      "loop": true
     },
     "walk": {
       "sheet": "sprites/walk-right.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 8,
-      "fps": 10,
-      "loop": true,
-      "leftSheet": "sprites/walk-left.png"
-    },
-    "sleep": {
-      "sheet": "sprites/sleep-curled.svg",
-      "frameWidth": 192,
-      "frameHeight": 192,
-      "frameCount": 5,
-      "fps": 3,
+      "frameCount": 10,
+      "fps": 12,
       "loop": true,
       "mirrorWhen": "left"
+    },
+    "sleep": {
+      "sheet": "sprites/sleep.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 3,
+      "loop": true
     },
     "dragged": {
       "sheet": "sprites/dragged.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 5,
-      "fps": 9,
+      "frameCount": 8,
+      "fps": 14,
       "loop": true,
-      "authoredGrip": true,
-      "leftSheet": "sprites/dragged-left.png"
+      "authoredGrip": true
     },
     "react": {
       "sheet": "sprites/react.png",
       "frameWidth": 192,
       "frameHeight": 192,
       "frameCount": 4,
-      "fps": 9,
-      "loop": false,
-      "leftSheet": "sprites/react-left.png"
+      "fps": 10,
+      "loop": false
     }
   },
   "motions": {
-    "jump": {
-      "sheet": "sprites/jump.png",
+    "frontWalk": {
+      "sheet": "sprites/frontWalk.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 4,
+      "frameCount": 10,
       "fps": 12,
-      "loop": false,
-      "leftSheet": "sprites/jump-left.png"
+      "loop": true
     },
-    "land": {
-      "sheet": "sprites/land.png",
+    "backWalk": {
+      "sheet": "sprites/backWalk.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 4,
-      "fps": 18,
-      "loop": false,
-      "leftSheet": "sprites/land-left.png"
-    },
-    "fly": {
-      "sheet": "sprites/fly.png",
-      "frameWidth": 192,
-      "frameHeight": 192,
-      "frameCount": 4,
-      "fps": 8,
-      "loop": true,
-      "leftSheet": "sprites/fly-left.png"
+      "frameCount": 10,
+      "fps": 12,
+      "loop": true
     },
     "look": {
       "sheet": "sprites/look.png",
@@ -84,7 +69,35 @@
       "frameHeight": 192,
       "frameCount": 1,
       "fps": 1,
-      "loop": true
+      "loop": true,
+      "mirrorWhen": "left"
+    },
+    "jump": {
+      "sheet": "sprites/jump.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 4,
+      "fps": 12,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "land": {
+      "sheet": "sprites/land.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 7,
+      "fps": 23,
+      "loop": false,
+      "mirrorWhen": "left"
+    },
+    "fly": {
+      "sheet": "sprites/fly.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 12,
+      "loop": true,
+      "mirrorWhen": "left"
     },
     "climb": {
       "sheet": "sprites/climb.png",
@@ -95,8 +108,8 @@
       "loop": true,
       "mirrorWhen": "right",
       "wallInsets": {
-        "left": 5,
-        "right": 5
+        "left": 0,
+        "right": 20
       }
     },
     "wallIdle": {
@@ -104,12 +117,12 @@
       "frameWidth": 192,
       "frameHeight": 192,
       "frameCount": 4,
-      "fps": 4,
+      "fps": 5,
       "loop": true,
       "mirrorWhen": "right",
       "wallInsets": {
-        "left": 5,
-        "right": 5
+        "left": 0,
+        "right": 20
       }
     },
     "wallImpact": {
@@ -130,43 +143,31 @@
       "loop": true,
       "mirrorWhen": "right"
     },
-    "ouch": {
-      "sheet": "sprites/ouch.svg",
+    "scratch": {
+      "sheet": "sprites/scratch.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 4,
-      "fps": 5,
+      "frameCount": 8,
+      "fps": 18,
       "loop": false,
       "mirrorWhen": "left"
     },
-    "recover": {
-      "sheet": "sprites/recover.png",
+    "landPrepare": {
+      "sheet": "sprites/land-prepare.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 5,
-      "fps": 11,
-      "loop": false
-    },
-    "frontWalk": {
-      "sheet": "sprites/frontWalk.png",
-      "frameWidth": 192,
-      "frameHeight": 192,
-      "frameCount": 10,
-      "fps": 12,
-      "loop": true
-    },
-    "backWalk": {
-      "sheet": "sprites/backWalk.png",
-      "frameWidth": 192,
-      "frameHeight": 192,
-      "frameCount": 10,
-      "fps": 12,
-      "loop": true
+      "frameCount": 4,
+      "fps": 35,
+      "loop": false,
+      "mirrorWhen": "left"
     }
   },
   "behavior": {
     "doubleClick": "chase",
-    "sideWalkInsets": { "left": 21, "right": 41 },
+    "sideWalkInsets": {
+      "left": 20,
+      "right": 20
+    },
     "sideWalkDepth": 0.16,
     "walkSpeedPxPerSec": 64,
     "idleMinMs": 1600,
@@ -174,11 +175,11 @@
     "walkMinMs": 3800,
     "walkMaxMs": 7200,
     "spriteScale": 0.625,
-    "personality": "curious"
+    "personality": "curious",
+    "alwaysLandOnFeet": true
   },
   "attribution": {
-    "author": "mikangscone (모노 스케치)",
-    "license": "Original artwork drawn for this project",
-    "sourceUrl": "https://github.com/forethinkfi/HK06_mikangscone/tree/black-and-white/themes/mono-sketch"
+    "author": "사용자 제공 이미지",
+    "license": "User-provided project artwork"
   }
 }

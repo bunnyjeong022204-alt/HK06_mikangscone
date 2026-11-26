@@ -15,8 +15,8 @@
       "sheet": "sprites/walk.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 14,
-      "fps": 15,
+      "frameCount": 8,
+      "fps": 10,
       "loop": true,
       "mirrorWhen": "left"
     },
@@ -26,8 +26,7 @@
       "frameHeight": 192,
       "frameCount": 8,
       "fps": 4,
-      "loop": true,
-      "effect": "sleep"
+      "loop": true
     },
     "dragged": {
       "sheet": "sprites/dragged.png",
@@ -130,22 +129,41 @@
       "sheet": "sprites/backWalk.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 14,
-      "fps": 15,
+      "frameCount": 8,
+      "fps": 10,
       "loop": true
     },
     "frontWalk": {
-      "sheet": "sprites/walk.png",
+      "sheet": "sprites/front-walk.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 14,
-      "fps": 15,
+      "frameCount": 8,
+      "fps": 10,
       "loop": true
+    },
+    "ouch": {
+      "sheet": "sprites/ouch.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 8,
+      "loop": false
+    },
+    "wake": {
+      "sheet": "sprites/wake.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 5,
+      "fps": 8,
+      "loop": false
     }
   },
   "behavior": {
     "doubleClick": "hearts",
-    "sideWalkInsets": { "left": 50, "right": 51 },
+    "sideWalkInsets": {
+      "left": 43,
+      "right": 43
+    },
     "sideWalkDepth": 0.16,
     "walkSpeedPxPerSec": 47,
     "idleMinMs": 1800,
@@ -156,7 +174,7 @@
     "personality": "relaxed"
   },
   "attribution": {
-    "author": "빈티지 크래프트 테마",
-    "license": "Artwork supplied by the project owner for this project"
+    "author": "사용자 제공 이미지",
+    "license": "User-provided project artwork"
   }
 }

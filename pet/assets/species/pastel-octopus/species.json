@@ -26,8 +26,7 @@
       "frameHeight": 192,
       "frameCount": 8,
       "fps": 4,
-      "loop": true,
-      "effect": "sleep"
+      "loop": true
     },
     "dragged": {
       "sheet": "sprites/dragged.png",
@@ -49,7 +48,10 @@
   },
   "behavior": {
     "doubleClick": "ink",
-    "sideWalkInsets": { "left": 15, "right": 14 },
+    "sideWalkInsets": {
+      "left": 12,
+      "right": 12
+    },
     "sideWalkDepth": 0.16,
     "walkSpeedPxPerSec": 45,
     "idleMinMs": 1800,
@@ -98,8 +100,8 @@
       "loop": true,
       "mirrorWhen": "right",
       "wallInsets": {
-        "left": 5,
-        "right": 5
+        "left": 0,
+        "right": 0
       }
     },
     "wallIdle": {
@@ -111,8 +113,8 @@
       "loop": true,
       "mirrorWhen": "right",
       "wallInsets": {
-        "left": 5,
-        "right": 5
+        "left": 0,
+        "right": 0
       }
     },
     "wallImpact": {
@@ -150,12 +152,71 @@
       "loop": true
     },
     "frontWalk": {
-      "sheet": "sprites/walk.png",
+      "sheet": "sprites/front-walk.png",
       "frameWidth": 192,
       "frameHeight": 192,
       "frameCount": 12,
       "fps": 13,
       "loop": true
+    },
+    "pokeLeft": {
+      "sheet": "sprites/poke-left.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 7,
+      "fps": 14,
+      "loop": false
+    },
+    "pokeRight": {
+      "sheet": "sprites/poke-right.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 7,
+      "fps": 14,
+      "loop": false
+    },
+    "pokeForehead": {
+      "sheet": "sprites/poke-forehead.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 7,
+      "fps": 14,
+      "loop": false
+    },
+    "grabLeft": {
+      "sheet": "sprites/grab-left.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 10,
+      "fps": 14,
+      "loop": true,
+      "authoredGrip": true
+    },
+    "grabRight": {
+      "sheet": "sprites/grab-right.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 10,
+      "fps": 14,
+      "loop": true,
+      "authoredGrip": true
+    },
+    "ouch": {
+      "sheet": "sprites/ouch.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 6,
+      "fps": 10,
+      "loop": false
+    },
+    "wallCling": {
+      "sheet": "sprites/wall-cling.png",
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "frameCount": 8,
+      "fps": 9,
+      "loop": true,
+      "mirrorWhen": "right"
     }
   }
 }

@@ -25,6 +25,10 @@ const durations: Record<PetMotion, number> = {
   jump: Infinity, climb: Infinity,
   sideIdle: Infinity, wallIdle: Infinity, wallFront: Infinity, frontWalk: Infinity, backWalk: Infinity,
   fireBreath: 660,
+  pokeLeft: 480, pokeRight: 480, pokeForehead: 480,
+  grabLeft: Infinity, grabRight: Infinity,
+  scratch: 440,
+  wallCling: Infinity, landPrepare: Infinity,
   toyWatch: 430, toyPounce: 460, toyLand: 330, toyAfter: 620, toyRod: Infinity, toyRodHit: 420,
 };
 
@@ -49,7 +53,9 @@ export function poseFor(cue: MotionCue, now: number, species: SpeciesConfig): Sp
   const pulse = Math.sin(p * Math.PI);
   const personality = personalityOf(species);
   if (species.motions?.[key] && (key !== 'wallImpact' || strength > 0.5)) {
-    if (key === 'wallImpact' || key === 'slip' || key === 'peek') return { tilt: 0, scaleX: 1, scaleY: 1, lift: 0, wall: side };
+    if (key === 'wallImpact' || key === 'wallCling' || key === 'slip' || key === 'peek') {
+      return { tilt: 0, scaleX: 1, scaleY: 1, lift: 0, wall: side };
+    }
     return undefined;
   }
   const pose: SpritePose = { tilt: 0, scaleX: 1, scaleY: 1, lift: 0 };

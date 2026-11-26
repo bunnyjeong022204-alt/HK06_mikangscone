@@ -39,6 +39,7 @@ describe('throwing a pet', () => {
     expect(landingReaction(560, 240, 490)).toBe('hurt');
     expect(landingReaction(0, 230)).toBeUndefined();
     expect(landingReaction(0, 360)).toBeUndefined();
+    expect(landingReaction(0, 460)).toBe('hurt');
     expect(landingReaction(0, 730)).toBe('hurt');
   });
 

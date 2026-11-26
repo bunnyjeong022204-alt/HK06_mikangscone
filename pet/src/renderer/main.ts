@@ -67,6 +67,18 @@ function positionSpeech(el: HTMLElement, center: number, top: number, bottom: nu
   el.toggleAttribute('data-below', below);
 }
 const HOVER_EXIT_PADDING = 5;
+const WALL_CLING_HOLD_MS = 550;
+const WALL_CLING_SLIDE_MS = 700;
+const WALL_CLING_MAX_SPEED = 220;
+const FACE_MOTIONS = {
+  left: { poke: 'pokeLeft', grab: 'grabLeft' },
+  right: { poke: 'pokeRight', grab: 'grabRight' },
+  forehead: { poke: 'pokeForehead', grab: undefined },
+} as const;
+
+function faceRegion(offset: Vec2) {
+  return offset.y / PET_SIZE < 0.49 ? 'forehead' : offset.x < PET_SIZE / 2 ? 'left' : 'right';
+}
 
 const REACTION_LINES = {
   grab: ['으앗, 잡지 마아!', '잠깐만, 나 내려갈래!', '히익! 발이 땅에서 떨어졌어!'],
@@ -114,7 +126,7 @@ async function main(): Promise<void> {
   let previous = performance.now();
   let reply: { pet: Companion; text: string; at: number } | null = null;
   let pointer: Vec2 = { x: -1000, y: -1000 };
-  let held: { pet: Companion; pointerId: number; start: Vec2; offset: Vec2; since: number; dragging: boolean; samples: PointerSample[] } | null = null;
+  let held: { pet: Companion; pointerId: number; start: Vec2; offset: Vec2; region: ReturnType<typeof faceRegion>; since: number; dragging: boolean; samples: PointerSample[] } | null = null;
   let rightPress: { pet: Companion; pointerId: number; timer: number; briefed: boolean } | null = null;
   let activeBriefing: { pet: Companion; until: number } | undefined;
   let briefingHover: { pet: Companion; since: number; requested: boolean } | undefined;
@@ -194,6 +206,7 @@ async function main(): Promise<void> {
   }
   function cue(pet: Companion, key: PetMotion, now: number, side: -1 | 1 = 1, strength = 0) {
     pet.cue = motionCue(pet.species, key, now, side, strength);
+    if (pet.playbackKey === key) pet.playbackKey = undefined;
     if (key === 'doze') hush(pet);
   }
   const random = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)];
@@ -348,12 +361,16 @@ async function main(): Promise<void> {
     if (photos.length) window.petAPI.sendPhotos(photos);
   });
   function beginDrag(grab: NonNullable<typeof held>) {
+    const { pet } = grab;
+    const now = performance.now();
     grab.dragging = true;
-    grab.pet.cue = undefined;
-    grab.pet.state.transition('idle');
-    grab.pet.behavior.interruptForDrag();
-    hush(grab.pet);
-    reactWithLine(grab.pet, 'grab', performance.now());
+    pet.cue = undefined;
+    pet.state.transition('idle');
+    pet.behavior.interruptForDrag();
+    hush(pet);
+    const motion = FACE_MOTIONS[grab.region].grab;
+    if (motion && pet.species.motions?.[motion]) cue(pet, motion, now);
+    reactWithLine(pet, 'grab', now);
   }
   function positionHeld(grab: NonNullable<typeof held>) {
     const size = PET_SIZE;
@@ -410,14 +427,10 @@ async function main(): Promise<void> {
       pet.airborne = { position: pos, velocity: { x: 0, y: 0 } };
       toyNextPlayAt = performance.now() + 1200;
     }
-    held = { pet, pointerId: event.pointerId, start: { ...pointer }, offset: { x: pointer.x - pos.x, y: pointer.y - pos.y },
-      since: performance.now(), dragging: !!pet.airborne, samples: [{ ...pointer, time: event.timeStamp }] };
-    if (pet.airborne) {
-      pet.cue = undefined;
-      pet.state.transition('idle');
-      pet.state.transition('dragged');
-      reactWithLine(pet, 'grab', performance.now());
-    }
+    const offset = { x: pointer.x - pos.x, y: pointer.y - pos.y };
+    held = { pet, pointerId: event.pointerId, start: { ...pointer }, offset, region: faceRegion(offset),
+      since: performance.now(), dragging: false, samples: [{ ...pointer, time: event.timeStamp }] };
+    if (pet.airborne) beginDrag(held);
     canvas.setPointerCapture(event.pointerId);
   });
   function release(event: Event) {
@@ -434,7 +447,7 @@ async function main(): Promise<void> {
     }
     if (!held || (event instanceof PointerEvent && event.pointerId !== held.pointerId)) return;
     if (event instanceof PointerEvent && event.type === 'pointerup') moveHeld(event);
-    const { pet, dragging, samples } = held;
+    const { pet, dragging, offset, region, samples } = held;
     held = null;
     if (dragging && pet.airborne) {
       hush(pet);
@@ -443,17 +456,34 @@ async function main(): Promise<void> {
       const floor = Math.max(0, bounds.height - PET_SIZE);
       pet.airborne.velocity = launchVelocity(velocity, floor - pet.airborne.position.y);
       pet.throwSpeed = Math.hypot(x, y);
-      pet.collisionPath = event.type !== 'pointerup' ? undefined : pet.throwSpeed > 0 ? 'throw' :
-        wallSide(pet.airborne.position, PET_SIZE, bounds.width, bounds.height);
+      const side = event.type === 'pointerup' ? wallSide(pet.airborne.position, PET_SIZE, bounds.width, bounds.height) : undefined;
+      pet.collisionPath = pet.throwSpeed > 0 ? 'throw' : side;
       pet.impactSpeed = 0;
-      pet.impactSide = x < 0 ? -1 : 1;
-      if (pet.throwSpeed > 0) cue(pet, 'fly', performance.now(), pet.impactSide, pet.throwSpeed / 1300);
+      pet.impactSide = x === 0 ? (pet.facing >= 5 ? -1 : 1) : x < 0 ? -1 : 1;
+      pet.cue = undefined;
+      if (side && clingToWall(pet, pet.airborne, side, pet.throwSpeed, performance.now())) return;
+      if (pet.throwSpeed > 0 || pet.airborne.position.y < floor - 1) {
+        cue(pet, 'fly', performance.now(), pet.impactSide, pet.throwSpeed / 1300);
+      }
     }
     else if (event.type === 'pointerup') {
-      if (resting(pet) || pet.chasing || (pet.nextBurstAt ?? 0) > performance.now()) return;
+      const now = performance.now();
+      if (pet.chasing || (pet.nextBurstAt ?? 0) > now) return;
+      if (pet.species.motions?.scratch) {
+        pet.state.transition('idle');
+        cue(pet, 'scratch', now, offset.x < PET_SIZE / 2 ? -1 : 1);
+        return;
+      }
+      const motion = FACE_MOTIONS[region].poke;
+      if (pet.species.motions?.[motion]) {
+        pet.state.transition('idle');
+        cue(pet, motion, now);
+        return;
+      }
+      if (resting(pet)) return;
       pet.cue = undefined;
       pet.state.transition('idle'); pet.behavior.react();
-      if (chatter?.enabled) talkToUser(pet, performance.now());
+      if (chatter?.enabled) talkToUser(pet, now);
     }
   }
   window.addEventListener('pointerup', release);
@@ -496,7 +526,7 @@ async function main(): Promise<void> {
     if (action === 'fire') pet.facing = side < 0 ? 6 : 2;
     effects.burst(action, {
       x: pos.x + size * (action === 'fire' ? side < 0 ? .26 : .74 : .5),
-      y: pos.y + size * (action === 'fire' ? .42 : action === 'ink' ? .5 : .27),
+      y: pos.y + size * (action === 'fire' ? .42 : action === 'ink' ? .64 : .27),
     }, side, now);
   });
   canvas.addEventListener('contextmenu', (event) => {
@@ -554,8 +584,39 @@ async function main(): Promise<void> {
     return true;
   }
 
+  function wallX(side: -1 | 1) {
+    return side < 0 ? 0 : Math.max(0, bounds.width - PET_SIZE);
+  }
+
+  function clingToWall(pet: Companion, flight: Flight, side: -1 | 1, speed: number, now: number) {
+    const clearance = bounds.height - PET_SIZE - flight.position.y;
+    if (!pet.species.motions?.wallCling || speed > WALL_CLING_MAX_SPEED || clearance < 25) return false;
+    pet.airborne = { position: { x: wallX(side), y: flight.position.y }, velocity: { x: 0, y: 0 } };
+    pet.collisionPath = undefined;
+    pet.throwSpeed = 0;
+    pet.impactSide = side;
+    cue(pet, 'wallCling', now, side);
+    return true;
+  }
+
   function simulateFlight(pet: Companion, now: number, delta: number) {
     if (!pet.airborne || held?.pet === pet) return;
+    const size = PET_SIZE;
+    const maxY = Math.max(0, bounds.height - size);
+    if (pet.cue?.key === 'wallCling') {
+      const { start, side } = pet.cue;
+      const { position } = pet.airborne;
+      const age = now - start;
+      position.x = wallX(side);
+      position.y = Math.min(position.y, maxY);
+      if (age < WALL_CLING_HOLD_MS) return;
+      if (age < WALL_CLING_HOLD_MS + WALL_CLING_SLIDE_MS && position.y < maxY - 12) {
+        position.y = Math.min(maxY - 12, position.y + delta * .10);
+        return;
+      }
+      pet.airborne.velocity = { x: -side * 95, y: 80 };
+      cue(pet, 'wallFall', now, side);
+    }
     if (pet.cue?.key === 'petBump') {
       const recoilUntil = Math.min(pet.cue.end, pet.cue.start + 45 + pet.cue.strength * 40);
       if (now < recoilUntil) return;
@@ -568,22 +629,26 @@ async function main(): Promise<void> {
       if (now < pet.cue.end) return;
       cue(pet, 'wallFall', now, pet.impactSide);
     }
-    const size = PET_SIZE;
-    const maxY = Math.max(0, bounds.height - size);
     const dt = delta / 1000;
     const next = advanceFlight(pet.airborne, dt, Math.max(0, bounds.width - size), maxY);
     if (collideWithPet(pet, pet.airborne, next, now, dt)) return;
     pet.airborne = next;
     if (next.wall && next.wallSpeed >= pet.impactSpeed) {
       pet.impactSide = next.wall === 'left' ? -1 : 1;
+      if (pet.collisionPath === 'throw' && clingToWall(pet, next, pet.impactSide, pet.throwSpeed, now)) return;
       pet.impactSpeed = next.wallSpeed;
       pet.facing = pet.impactSide < 0 ? 6 : 2;
       cue(pet, 'wallImpact', now, pet.impactSide, Math.min(1, next.wallSpeed / 920));
-      if (next.wallSpeed > 460) reactWithLine(pet, 'bump', now);
+      if (next.wallSpeed > 460 && !pet.species.behavior.alwaysLandOnFeet) reactWithLine(pet, 'bump', now);
       if (next.landed) {
         pet.airborne = { position: next.position, velocity: { x: 0, y: next.landingSpeed } };
         return;
       }
+    }
+    const distanceToFloor = maxY - next.position.y;
+    if (!next.landed && pet.species.motions?.landPrepare && pet.cue?.key !== 'landPrepare' &&
+        next.velocity.y > 90 && distanceToFloor <= Math.min(65, next.velocity.y * .10)) {
+      cue(pet, 'landPrepare', now, pet.impactSide);
     }
     if (next.landed) {
       pet.behavior.setPosition({ x: floorX(next.position.x, size), y: 0 });
@@ -593,7 +658,7 @@ async function main(): Promise<void> {
       const reaction = landingReaction(pet.throwSpeed, next.landingSpeed, pet.impactSpeed);
       pet.impactSpeed = severity;
       cue(pet, 'land', now, pet.impactSide, Math.min(reaction === 'playful' ? 0.3 : 1, severity / 920));
-      if (reaction === 'hurt') {
+      if (reaction === 'hurt' && !pet.species.behavior.alwaysLandOnFeet) {
         pet.state.transition('hurt');
         reactWithLine(pet, 'landing', now);
       } else if (reaction === 'playful') {
@@ -607,6 +672,7 @@ async function main(): Promise<void> {
     if (!active || pet.airborne || pet.toyPlay || now < active.end) return;
     pet.cue = undefined;
     if (active.key === 'land' && pet.state.getState() === 'hurt') cue(pet, 'ouch', now, active.side);
+    else if (active.key === 'land' && pet.species.behavior.alwaysLandOnFeet) pet.behavior.resumeAfterDrag();
     else if (active.key === 'land' || active.key === 'ouch') cue(pet, 'recover', now, active.side);
     else if (active.key === 'recover') pet.behavior.resumeAfterDrag();
   }
@@ -887,8 +953,11 @@ async function main(): Promise<void> {
       const dx = after.x - before.x;
       const dy = after.y - before.y;
       if (pet.toyPlay) pet.facing = pet.toyPlay.side < 0 ? 6 : 2;
-      else if (pet.cue?.key === 'fireBreath') pet.facing = pet.cue.side < 0 ? 6 : 2;
-      else if (pet.cue?.key === 'wallImpact' || pet.cue?.key === 'wallFall') pet.facing = pet.cue.side < 0 ? 6 : 2;
+      else if (pet.cue?.key === 'fireBreath' || pet.cue?.key === 'scratch') pet.facing = pet.cue.side < 0 ? 6 : 2;
+      else if (pet.cue?.key === 'wallImpact' || pet.cue?.key === 'wallCling' || pet.cue?.key === 'wallFall' ||
+          pet.cue?.key === 'landPrepare' || (pet.cue?.key === 'land' && pet.species.motions?.landPrepare)) {
+        pet.facing = pet.cue.side < 0 ? 6 : 2;
+      }
       else if (Math.abs(dx) > Math.max(0.01, Math.abs(dy))) pet.facing = dx < 0 ? 6 : 2;
       else if (Math.abs(dy) > 0.01) pet.facing = dy < 0 ? 4 : 0;
       const state = pet.state.getState();

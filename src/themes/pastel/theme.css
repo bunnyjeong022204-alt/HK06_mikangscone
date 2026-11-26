@@ -8,6 +8,19 @@
   font-display: swap;
 }
 
+.character-octopus {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: url('octopus.png') center 83% / 90% auto no-repeat;
+  transform-origin: 50% 90%;
+  animation: bob 3.2s ease-in-out infinite;
+}
+
+.mood-alert .character-octopus {
+  animation: hop .5s ease-in-out infinite;
+}
+
 :root[data-theme-pack="pastel"] {
   --f-pastel: 'Pastel Memoment', 'MemomentKkukkukk', '메모먼트꾹꾹체', 'Gaegu', 'Gowun Dodum', 'Apple SD Gothic Neo', sans-serif;
   --f-ui: var(--f-pastel);

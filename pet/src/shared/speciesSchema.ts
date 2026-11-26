@@ -3,7 +3,9 @@ import type { PetState } from './petState';
 export type PetMotion = 'fly' | 'wallImpact' | 'wallFall' | 'petBump' | 'land' | 'ouch' | 'recover' |
   'wake' | 'doze' | 'curious' | 'peek' | 'slip' | 'look' | 'startle' | 'meet' | 'jump' | 'climb' |
   'toyWatch' | 'toyPounce' | 'toyLand' | 'toyAfter' | 'toyRod' | 'toyRodHit' | 'sideIdle' | 'wallIdle' | 'wallFront' |
-  'frontWalk' | 'backWalk' | 'fireBreath';
+  'frontWalk' | 'backWalk' | 'fireBreath' |
+  'pokeLeft' | 'pokeRight' | 'pokeForehead' | 'grabLeft' | 'grabRight' | 'scratch' |
+  'wallCling' | 'landPrepare';
 export type PetPersonality = 'relaxed' | 'cautious' | 'curious';
 
 /**
@@ -35,6 +37,8 @@ export interface SpeciesAnimationDef {
 export interface SpeciesBehaviorDef {
   personality?: PetPersonality;
   doubleClick?: 'fire' | 'chase' | 'ink' | 'hearts';
+  /** Use the normal landing sequence even after a hard fall. */
+  alwaysLandOnFeet?: boolean;
   /** Mouth position in the right-facing frame, with the first open frame index. */
   fireMouth?: { x: number; y: number; frame: number };
   /** Smallest transparent margin on each side across both edge-walk sheets, in source pixels. */
@@ -124,6 +128,7 @@ export function isSpeciesConfig(value: unknown): value is SpeciesConfig {
   if (typeof v.behavior !== 'object' || v.behavior === null) return false;
   const b = v.behavior as Record<string, unknown>;
   if (b.personality !== undefined && !['relaxed', 'cautious', 'curious'].includes(String(b.personality))) return false;
+  if (b.alwaysLandOnFeet !== undefined && typeof b.alwaysLandOnFeet !== 'boolean') return false;
   const requiredBehaviorKeys: (keyof SpeciesBehaviorDef)[] = [
     'walkSpeedPxPerSec',
     'idleMinMs',
