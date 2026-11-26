@@ -14,7 +14,7 @@ import { AppSettings, DEFAULT_SPECIES_ID } from './appSettings';
 import { loadCompanionScene } from './sceneLoader';
 import fs from 'node:fs';
 import { getLocalSpeciesRoot } from './speciesLoader';
-import { IPC } from '../shared/ipcContract';
+import { IPC, MAX_DROPPED_PHOTOS, MAX_PHOTO_DROP_BYTES, type DroppedPhoto } from '../shared/ipcContract';
 import { saveImagePet, runPetMenuAction } from './petMenu';
 import type { SpeciesConfig } from '../shared/speciesSchema';
 
@@ -75,7 +75,9 @@ function watchActiveSpecies(speciesId: string, publish: (scene: SpeciesConfig) =
   unwatchSpecies = () => { watcher.close(); unwatchers.forEach((stop) => stop()); };
 }
 
-export function startPet(notifyVisibilityChange: () => void, openBookmarks: () => void, onMenuSelection: (id: string) => void, requestBriefing: (id: string) => void) {
+export function startPet(notifyVisibilityChange: () => void, openBookmarks: () => void, onMenuSelection: (id: string) => void, requestBriefing: (id: string) => void,
+  onPhotos: (photos: DroppedPhoto[]) => void,
+  onPhotoError: (message: string) => void) {
   onVisibilityChange = notifyVisibilityChange;
   registerAssetProtocolHandler();
   ensureLocalSpeciesRoot();
@@ -131,6 +133,16 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
         onMenuSelection(id);
       }, dismissPet, () => setPetVisible(false));
     }
+  });
+  ipcMain.on(IPC.PHOTO_DROP, (event, photos) => {
+    if (event.sender !== window.webContents || !Array.isArray(photos) ||
+        !photos.length || photos.length > MAX_DROPPED_PHOTOS) return;
+    if (!photos.every((photo) => typeof photo?.name === 'string' && typeof photo.type === 'string' &&
+        photo.bytes instanceof ArrayBuffer && photo.bytes.byteLength > 0)) return;
+    if (photos.reduce((total, photo) => total + photo.bytes.byteLength, 0) <= MAX_PHOTO_DROP_BYTES) onPhotos(photos);
+  });
+  ipcMain.on(IPC.PHOTO_ERROR, (event, message) => {
+    if (event.sender === window.webContents && typeof message === 'string' && message.length <= 100) onPhotoError(message);
   });
   ipcMain.on(IPC.OPEN_BOOKMARKS, (event) => {
     if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents) openBookmarks();

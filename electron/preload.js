@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('api', {
   petScheduleSpeech: (text) => ipcRenderer.invoke('memo-pet:schedule-speech', text),
   onPetBriefingRequest: on('pet-briefing-request'),
   showPetBriefing: (id, text) => ipcRenderer.send('memo-pet:show-briefing', id, text),
+  onPetPhotos: on('pet-photos'),
+  onPetPhotoError: on('pet-photo-error'),
   onPetChanged: on('pet-changed'),
   onPetMenuSelected: on('pet-menu-selected'),
   notify: (o) => ipcRenderer.send('notify', o),

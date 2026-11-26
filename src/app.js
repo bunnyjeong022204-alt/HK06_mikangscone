@@ -623,6 +623,31 @@ async function addPhotos(n, files) {
   }
   return added;
 }
+async function openPhotoNote(files) {
+  let note;
+  const photos = [];
+  for (const file of files.slice(0, MAX_PHOTOS)) {
+    try {
+      const src = await readPhoto(file);
+      note = S.notes.filter((n) =>
+        n.photos.includes(src) || n.stickers.some((st) => st.type === 'photo' && st.src === src)
+      ).sort((a, b) => b.viewedAt - a.viewedAt)[0];
+      if (note) break;
+      photos.push(src);
+    } catch (err) {
+      toast({ title: '사진을 열지 못했어요', body: `${file.name}: ${err.message}`, ttl: 5000 });
+    }
+  }
+  if (!note && !photos.length) return;
+  if (viewerKeys) closeViewer();
+  else if (modalOpen && modalKind !== 'board') closeSettings();
+  if (!note) {
+    note = blankNote();
+    note.photos.push(...photos);
+    S.notes.unshift(note);
+  }
+  openNote(note.id);
+}
 /** 캐릭터·책갈피·모아보기 메모에 사진 파일을 끌어다 놓기 */
 function bindImageDrop(el, target, makeNew) {
   el.addEventListener('dragover', (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); el.classList.add('dropping'); } });
@@ -1765,6 +1790,21 @@ function bindGlobal() {
   document.addEventListener('dragenter', (e) => { if (hasFiles(e)) { dragN++; $('#stage').classList.add('filedrag'); } });
   document.addEventListener('dragleave', (e) => { if (hasFiles(e) && --dragN <= 0) { dragN = 0; $('#stage').classList.remove('filedrag'); } });
   document.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+  document.addEventListener('drop', (e) => {
+    if (!hasFiles(e) || !e.target.closest?.('#perch, #peek .pc, .overview-avatar')) return;
+    dragN = 0;
+    $('#stage').classList.remove('filedrag');
+    e.preventDefault();
+    e.stopPropagation();
+    const files = imageFiles(e.dataTransfer.files);
+    if (files.length) void openPhotoNote(files);
+    else toast({ title: '사진 파일을 놓아 주세요.', ttl: 3000 });
+  }, true);
+  api.onPetPhotos?.((photos) => {
+    const files = photos.map(({ bytes, name, type }) => new File([bytes], name, { type }));
+    void openPhotoNote(files);
+  });
+  api.onPetPhotoError?.((message) => toast({ title: message, ttl: 3000 }));
   document.addEventListener('drop', async (e) => {
     dragN = 0; $('#stage').classList.remove('filedrag');
     if (!hasFiles(e)) return;

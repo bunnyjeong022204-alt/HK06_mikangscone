@@ -243,7 +243,8 @@ app.whenReady().then(() => {
     if (tray) buildTrayMenu();
     send('pet-changed');
   }, () => send('cmd', 'pet-bookmarks'), (id) => send('pet-menu-selected', id),
-  (id) => send('pet-briefing-request', id));
+  (id) => send('pet-briefing-request', id), (photos) => send('pet-photos', photos),
+  (message) => send('pet-photo-error', message));
   createOverlay();
   createTray();
   registerShortcuts();

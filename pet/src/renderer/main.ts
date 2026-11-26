@@ -12,6 +12,7 @@ import type { Rect, Vec2 } from './types';
 import { advanceFlight, landingReaction, launchVelocity, releaseVelocity, RELEASE_SAMPLE_WINDOW_MS, type Flight, type PointerSample } from './throwMotion';
 import { motionCue, personalityOf, poseFor, type MotionCue } from './petMotion';
 import { canHitPet, petContact, petRebound, wallSide, type CollisionPath } from './petCollision';
+import { MAX_DROPPED_PHOTOS, MAX_PHOTO_DROP_BYTES, type DroppedPhoto } from '../shared/ipcContract';
 
 interface Companion {
   species: SpeciesConfig;
@@ -275,6 +276,33 @@ async function main(): Promise<void> {
     const padding = pet === hoveredPet ? HOVER_EXIT_PADDING : 0;
     return pointer.x >= box.x - padding && pointer.x <= box.x + box.width + padding &&
       pointer.y >= box.y - padding && pointer.y <= box.y + box.height + padding;
+  });
+  canvas.addEventListener('dragover', (event) => {
+    if (!event.dataTransfer?.types.includes('Files')) return;
+    event.preventDefault();
+    pointer = { x: event.clientX, y: event.clientY };
+    event.dataTransfer.dropEffect = hit() ? 'copy' : 'none';
+  });
+  canvas.addEventListener('drop', async (event) => {
+    event.preventDefault();
+    pointer = { x: event.clientX, y: event.clientY };
+    if (!hit() || !event.dataTransfer) return;
+    const images = Array.from(event.dataTransfer.files).filter(file =>
+      file.type.startsWith('image/') || /\.(jpe?g|jfif|pjpeg|pjp|png|apng|gif|webp|bmp|dib|svg|avif|heic|heif|ico|cur|tiff?)$/i.test(file.name));
+    if (!images.length) return window.petAPI.photoError('사진 파일을 놓아 주세요.');
+    const photos: DroppedPhoto[] = [];
+    let totalBytes = 0;
+    for (const file of images) {
+      if (photos.length >= MAX_DROPPED_PHOTOS) { window.petAPI.photoError('사진은 메모 하나에 6장까지 담을 수 있어요.'); break; }
+      if (totalBytes + file.size > MAX_PHOTO_DROP_BYTES) { window.petAPI.photoError('한 번에 60MB 이하의 사진을 놓아 주세요.'); continue; }
+      try {
+        const bytes = await file.arrayBuffer();
+        if (!bytes.byteLength) throw new Error('Empty photo');
+        photos.push({ name: file.name, type: file.type, bytes });
+        totalBytes += bytes.byteLength;
+      } catch { window.petAPI.photoError('사진을 읽을 수 없어요.'); }
+    }
+    if (photos.length) window.petAPI.sendPhotos(photos);
   });
   function beginDrag(grab: NonNullable<typeof held>) {
     grab.dragging = true;

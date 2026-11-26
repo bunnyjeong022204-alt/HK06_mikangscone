@@ -18,6 +18,8 @@ export const IPC = {
   PET_MENU_SPECIES: 'pet:menuSpecies',
   PET_MENU_ACTION: 'pet:menuAction',
   PET_DISMISSED: 'pet:dismissed',
+  PHOTO_DROP: 'pet:photoDrop',
+  PHOTO_ERROR: 'pet:photoError',
   OPEN_BOOKMARKS: 'pet:openBookmarks',
   REQUEST_BRIEFING: 'pet:requestBriefing',
   SHOW_BRIEFING: 'pet:showBriefing',
@@ -28,6 +30,10 @@ export const IPC = {
 export type SceneCommand = 'demo' | 'quiet' | 'toy';
 export type PetMenuAction = { kind: 'select' | 'dismiss'; id: string } | { kind: 'hide' | 'quit' };
 export interface PetMenuSpecies { id: string; label: string; selected: boolean; visible: boolean; dismissed: boolean }
+
+export interface DroppedPhoto { name: string; type: string; bytes: ArrayBuffer }
+export const MAX_DROPPED_PHOTOS = 6;
+export const MAX_PHOTO_DROP_BYTES = 60 * 1024 * 1024;
 
 export interface Rect {
   x: number;
@@ -58,6 +64,8 @@ export interface PetAPI {
   onSceneCommand(callback: (command: SceneCommand) => void): void;
   getPetMenuSpecies(): Promise<PetMenuSpecies[]>;
   runPetMenuAction(action: PetMenuAction): void;
+  sendPhotos(photos: DroppedPhoto[]): void;
+  photoError(message: string): void;
   openBookmarks(): void;
   requestBriefing(id: string): void;
   onBriefing(callback: (id: string, text: string) => void): void;
