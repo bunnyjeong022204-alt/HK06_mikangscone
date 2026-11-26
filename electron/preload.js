@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('api', {
   petVisible: (visible) => ipcRenderer.invoke('memo-pet:visible', visible),
   petControls: (action, id) => ipcRenderer.invoke('memo-pet:controls', action, id),
   petScheduleSpeech: (text) => ipcRenderer.invoke('memo-pet:schedule-speech', text),
+  onPetBriefingRequest: on('pet-briefing-request'),
+  showPetBriefing: (id, text) => ipcRenderer.send('memo-pet:show-briefing', id, text),
   onPetChanged: on('pet-changed'),
   onPetMenuSelected: on('pet-menu-selected'),
   notify: (o) => ipcRenderer.send('notify', o),

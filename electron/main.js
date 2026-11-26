@@ -161,6 +161,11 @@ ipcMain.handle('memo-pet:schedule-speech', (event, text) => {
   const line = text.trim().slice(0, 160);
   return line ? (petControls?.speakSchedule(line) ?? false) : false;
 });
+ipcMain.on('memo-pet:show-briefing', (event, id, text) => {
+  if (event.sender === win?.webContents && typeof id === 'string' && typeof text === 'string') {
+    petControls?.showBriefing(id, text.slice(0, 600));
+  }
+});
 ipcMain.on('app:openData', () => shell.openPath(store.dir()));
 ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('settings:apply', (event, s) => {
@@ -222,7 +227,8 @@ app.whenReady().then(() => {
   petControls = pet.startPet(() => {
     if (tray) buildTrayMenu();
     send('pet-changed');
-  }, () => send('cmd', 'pet-bookmarks'), (id) => send('pet-menu-selected', id));
+  }, () => send('cmd', 'pet-bookmarks'), (id) => send('pet-menu-selected', id),
+  (id) => send('pet-briefing-request', id));
   createOverlay();
   createTray();
   registerShortcuts();

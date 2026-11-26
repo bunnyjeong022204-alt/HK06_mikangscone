@@ -48,6 +48,7 @@ interface SideWalk {
 }
 
 const SIDE_WALK_HEIGHT_RATIO = 0.45;
+const BRIEFING_HOLD_MS = 450;
 
 function sideWalkProgress(walk: SideWalk) {
   const phase = walk.elapsed / walk.legMs;
@@ -127,6 +128,8 @@ async function main(): Promise<void> {
   let reply: { pet: Companion; text: string; at: number } | null = null;
   let pointer: Vec2 = { x: -1000, y: -1000 };
   let held: { pet: Companion; pointerId: number; start: Vec2; offset: Vec2; since: number; dragging: boolean; samples: PointerSample[] } | null = null;
+  let rightPress: { pet: Companion; pointerId: number; timer: number; briefed: boolean } | null = null;
+  let activeBriefing: { pet: Companion; until: number } | undefined;
   let clickThrough = true;
   let hoveredPet: Companion | undefined;
   let toyEnabled = false;
@@ -149,6 +152,21 @@ async function main(): Promise<void> {
   }
   const petMenu = new PetQuickMenu(toggleToy);
   const emptyPaper = new EmptyRosterPaper((anchor) => petMenu.open(anchor, false, false, true));
+  const briefingCard = document.createElement('div');
+  const briefingTitle = document.createElement('strong');
+  const briefingBody = document.createElement('p');
+  briefingCard.className = 'pet-briefing';
+  briefingCard.hidden = true;
+  briefingCard.setAttribute('role', 'status');
+  briefingTitle.textContent = '오늘 브리핑';
+  briefingCard.append(briefingTitle, briefingBody);
+  document.body.append(briefingCard);
+  window.petAPI.onBriefing((id, text) => {
+    const pet = pets.find((item) => item.species.id === id);
+    if (!pet) return;
+    briefingBody.textContent = text;
+    activeBriefing = { pet, until: performance.now() + 8000 };
+  });
   let nextPointerPoll = 0;
   const pollPointer = () => !held && (clickThrough || !!hoveredPet || pets.some((pet) => pet.chasing));
   document.addEventListener('pointermove', (event) => {
@@ -233,6 +251,9 @@ async function main(): Promise<void> {
     }
   });
   window.petAPI.onSpeciesLoaded((loaded) => {
+    cancelRightPress();
+    activeBriefing = undefined;
+    briefingCard.hidden = true;
     sceneReady = true;
     petMenu.close();
     toyEnabled = false;
@@ -266,6 +287,8 @@ async function main(): Promise<void> {
   window.petAPI.onPetDismissed((id) => {
     const departing = pets.find((pet) => pet.species.id === id);
     if (!departing) return;
+    if (rightPress?.pet === departing) cancelRightPress();
+    if (activeBriefing?.pet === departing) activeBriefing = undefined;
     const fishing = toyOwner() === departing;
     hush(departing);
     departing.bubble.remove();
@@ -329,18 +352,26 @@ async function main(): Promise<void> {
     lastPointerAt = performance.now();
     updateMouseTarget();
   });
-  canvas.addEventListener('mousedown', (event) => {
-    if (event.button !== 2 || event.shiftKey || held) return;
-    pointer = { x: event.clientX, y: event.clientY };
-    if (!hit()) return;
-    event.preventDefault();
-    petMenu.close();
-    window.petAPI.openBookmarks();
-  });
+  function cancelRightPress() {
+    if (rightPress) window.clearTimeout(rightPress.timer);
+    rightPress = null;
+  }
   canvas.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 || !event.isPrimary || held || petMenu.isOpen) return;
+    if (!event.isPrimary || held || rightPress || petMenu.isOpen || (event.button !== 0 && event.button !== 2)) return;
     pointer = { x: event.clientX, y: event.clientY };
     const pet = hit(); if (!pet) return;
+    if (event.button === 2) {
+      if (event.shiftKey) return;
+      event.preventDefault();
+      const timer = window.setTimeout(() => {
+        if (!rightPress) return;
+        rightPress.briefed = true;
+        window.petAPI.requestBriefing(pet.species.id);
+      }, BRIEFING_HOLD_MS);
+      rightPress = { pet, pointerId: event.pointerId, timer, briefed: false };
+      canvas.setPointerCapture(event.pointerId);
+      return;
+    }
     const pos = petPosition(pet);
     if (pet.toyPlay) {
       pet.toyPlay = undefined;
@@ -358,6 +389,14 @@ async function main(): Promise<void> {
     canvas.setPointerCapture(event.pointerId);
   });
   function release(event: Event) {
+    if (rightPress && (!(event instanceof PointerEvent) || event.pointerId === rightPress.pointerId)) {
+      const { briefed } = rightPress;
+      cancelRightPress();
+      if (event instanceof PointerEvent && event.type === 'pointerup' && event.button === 2 && !briefed) {
+        activeBriefing = undefined;
+        window.petAPI.openBookmarks();
+      }
+    }
     if (!held || (event instanceof PointerEvent && event.pointerId !== held.pointerId)) return;
     if (event instanceof PointerEvent && event.type === 'pointerup') moveHeld(event);
     const { pet, dragging, samples } = held;
@@ -719,7 +758,7 @@ async function main(): Promise<void> {
   function updateMouseTarget() {
     hoveredPet = hit();
     const capturingWheel = toyEnabled && pointerInArea() && !!toyOwner()?.species.fishingToy;
-    const ignore = !held && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hoveredPet;
+    const ignore = !held && !rightPress && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hoveredPet;
     if (ignore !== clickThrough) { clickThrough = ignore; window.petAPI.setClickThrough(ignore); }
     canvas.classList.toggle('is-dragging', !!held?.dragging);
   }
@@ -784,6 +823,8 @@ async function main(): Promise<void> {
       else nextChat = now + 1500;
     }
     encounter(now);
+    if (activeBriefing && now >= activeBriefing.until) activeBriefing = undefined;
+    briefingCard.hidden = !activeBriefing;
     for (const pet of pets) {
       finishCue(pet, now);
       const scale = pet.species.behavior.spriteScale;
@@ -848,9 +889,14 @@ async function main(): Promise<void> {
           pet.firePending = false;
         }
       }
-      pet.bubble.hidden = resting(pet) || now >= pet.until;
+      pet.bubble.hidden = activeBriefing?.pet === pet || resting(pet) || now >= pet.until;
       const head = frame && pose ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize(pet)).y :
         frame && def.pixelArt ? renderer.getPaintBounds(def, frame, pos, scale).y : pos.y;
+      if (activeBriefing?.pet === pet) {
+        const width = briefingCard.offsetWidth;
+        briefingCard.style.left = `${Math.max(6, Math.min(bounds.width - width - 6, pos.x + (petSize(pet) - width) / 2))}px`;
+        briefingCard.style.top = `${Math.max(6, head - briefingCard.offsetHeight - 8)}px`;
+      }
       const bubbleWidth = pet.bubble.offsetWidth || 190;
       pet.bubble.style.left = `${Math.max(4, Math.min(bounds.width - bubbleWidth - 4, pos.x + petSize(pet) / 2 - bubbleWidth / 2))}px`;
       pet.bubble.style.top = `${Math.max(4, head - pet.bubble.offsetHeight - 4)}px`;

@@ -1728,6 +1728,7 @@ function bindGlobal() {
   api.onDisplay(() => { fit(); if (bubble.open) placeBubble(); });
   api.onPetChanged?.(() => { void refreshPetControls(); });
   api.onPetMenuSelected?.(applyPetMenuSelection);
+  api.onPetBriefingRequest?.((id) => api.showPetBriefing(id, briefing()));
   api.onOpenNote((id) => { if (id && byId(id)) openNote(id); });
   api.onCommand((cmd) => {
     if (cmd === 'summon') toggleDock();

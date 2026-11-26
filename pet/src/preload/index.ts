@@ -17,6 +17,8 @@ const petAPI: PetAPI = {
   getPetMenuSpecies() { return ipcRenderer.invoke(IPC.PET_MENU_SPECIES); },
   runPetMenuAction(action) { ipcRenderer.send(IPC.PET_MENU_ACTION, action); },
   openBookmarks() { ipcRenderer.send(IPC.OPEN_BOOKMARKS); },
+  requestBriefing(id) { ipcRenderer.send(IPC.REQUEST_BRIEFING, id); },
+  onBriefing(callback) { ipcRenderer.on(IPC.SHOW_BRIEFING, (_event, id: string, text: string) => callback(id, text)); },
   onScheduleSpeech(callback) { ipcRenderer.on(IPC.SCHEDULE_SPEECH, (_event, text: string) => callback(text)); },
   getCursorPoint() { return ipcRenderer.invoke(IPC.CURSOR_POINT); },
   setClickThrough(ignore: boolean) {

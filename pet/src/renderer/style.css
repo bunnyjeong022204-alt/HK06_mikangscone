@@ -38,3 +38,21 @@ body {
   box-shadow: 0 5px 18px #00000018;
   pointer-events: none;
 }
+
+.pet-briefing {
+  position: absolute;
+  box-sizing: border-box;
+  width: min(245px, calc(100vw - 12px));
+  padding: 12px 14px;
+  border: 1px solid #b9c5ad;
+  border-radius: 14px;
+  background: #fffdf5;
+  color: #354037;
+  box-shadow: 0 5px 18px #26291f26;
+  font: 13px/1.55 system-ui, 'Malgun Gothic', sans-serif;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.pet-briefing strong { font-size: 14px; }
+.pet-briefing p { margin: 4px 0 0; }

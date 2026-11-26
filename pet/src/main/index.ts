@@ -75,7 +75,7 @@ function watchActiveSpecies(speciesId: string, publish: (scene: SpeciesConfig) =
   unwatchSpecies = () => { watcher.close(); unwatchers.forEach((stop) => stop()); };
 }
 
-export function startPet(notifyVisibilityChange: () => void, openBookmarks: () => void, onMenuSelection: (id: string) => void) {
+export function startPet(notifyVisibilityChange: () => void, openBookmarks: () => void, onMenuSelection: (id: string) => void, requestBriefing: (id: string) => void) {
   onVisibilityChange = notifyVisibilityChange;
   registerAssetProtocolHandler();
   ensureLocalSpeciesRoot();
@@ -135,6 +135,10 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
   ipcMain.on(IPC.OPEN_BOOKMARKS, (event) => {
     if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents) openBookmarks();
   });
+  ipcMain.on(IPC.REQUEST_BRIEFING, (event, id: unknown) => {
+    if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents &&
+        typeof id === 'string' && visibleSpecies.has(id)) requestBriefing(id);
+  });
 
   ipcMain.on(IPC.RENDERER_READY, (event) => {
     if (event.sender !== window.webContents) return;
@@ -160,6 +164,11 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
     state: () => ({ present: isPetVisible() && (!rendererReady || visibleSpecies.size > 0), species: speciesOptions() }),
     show,
     importPhoto: (source: string) => show(saveImagePet(source)),
+    showBriefing(id: string, text: string) {
+      if (!window.isDestroyed() && window.isVisible() && visibleSpecies.has(id)) {
+        window.webContents.send(IPC.SHOW_BRIEFING, id, text);
+      }
+    },
     speakSchedule(text: string) {
       if (window.isDestroyed() || !rendererReady || !window.isVisible() || !visibleSpecies.size) return false;
       window.webContents.send(IPC.SCHEDULE_SPEECH, text);
