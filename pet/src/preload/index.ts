@@ -10,19 +10,22 @@ import {
 } from '../shared/ipcContract';
 
 const petAPI: PetAPI = {
+  onSizeChanged(callback) { ipcRenderer.on(IPC.SIZE_CHANGED, (_event, size: number) => callback(size)); },
   ready() { ipcRenderer.send(IPC.RENDERER_READY); },
   onSceneCommand(callback) {
     ipcRenderer.on(IPC.SCENE_COMMAND, (_event, command: SceneCommand) => callback(command));
   },
   getPetMenuSpecies() { return ipcRenderer.invoke(IPC.PET_MENU_SPECIES); },
   runPetMenuAction(action) { ipcRenderer.send(IPC.PET_MENU_ACTION, action); },
+  onPerched(callback) { ipcRenderer.on(IPC.PERCHED, (_event, id) => callback(id)); },
+  sendContent(content) { ipcRenderer.send(IPC.DROP_CONTENT, content); },
   sendPhotos(photos) { ipcRenderer.send(IPC.PHOTO_DROP, photos); },
   photoError(message) { ipcRenderer.send(IPC.PHOTO_ERROR, message); },
   openBookmarks(anchor) { ipcRenderer.send(IPC.OPEN_BOOKMARKS, anchor); },
   openOverview() { ipcRenderer.send(IPC.OPEN_OVERVIEW); },
   requestBriefing(id) { ipcRenderer.send(IPC.REQUEST_BRIEFING, id); },
   onBriefing(callback) { ipcRenderer.on(IPC.SHOW_BRIEFING, (_event, id: string, text: string) => callback(id, text)); },
-  onScheduleSpeech(callback) { ipcRenderer.on(IPC.SCHEDULE_SPEECH, (_event, text: string) => callback(text)); },
+  onScheduleSpeech(callback) { ipcRenderer.on(IPC.SCHEDULE_SPEECH, (_event, text: string, id: string) => callback(text, id)); },
   getCursorPoint() { return ipcRenderer.invoke(IPC.CURSOR_POINT); },
   setClickThrough(ignore: boolean) {
     ipcRenderer.send(IPC.SET_CLICK_THROUGH, ignore);

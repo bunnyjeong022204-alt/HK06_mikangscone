@@ -78,7 +78,7 @@ function watchActiveSpecies(speciesId: string, publish: (scene: SpeciesConfig) =
 export function startPet(notifyVisibilityChange: () => void, openBookmarks: (anchor: Rect) => void, onMenuSelection: (id: string) => void, requestBriefing: (id: string) => void,
   onPhotos: (photos: DroppedPhoto[]) => void,
   onPhotoError: (message: string) => void,
-  openOverview: () => void) {
+  openOverview: () => void, onContent: (content: { imageUrl: string; text: string }) => void) {
   onVisibilityChange = notifyVisibilityChange;
   registerAssetProtocolHandler();
   ensureLocalSpeciesRoot();
@@ -93,6 +93,8 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: (anc
   const dismissed = new Set(appSettings.getDismissedSpeciesIds());
   let visibleSpecies = new Set<string>();
   let rendererReady = false;
+  let petSize = 80;
+  let perchedId: string | null = null;
   const publish = (scene: SpeciesConfig) => {
     visibleSpecies = new Set([scene, ...(scene.companions ?? [])].map(({ id }) => id).filter((id) => !dismissed.has(id)));
     sendSpeciesLoaded(window, { ...scene, dismissedIds: [...dismissed] });
@@ -121,7 +123,7 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: (anc
     if (window.isDestroyed() || event.sender !== window.webContents) return { x: -1, y: -1 };
     const cursor = screen.getCursorScreenPoint();
     const bounds = window.getContentBounds();
-    return { x: cursor.x - bounds.x, y: cursor.y - bounds.y };
+    return { x: cursor.x - bounds.x, y: cursor.y - bounds.y, fileDrag: windowManager.fileDragActive() };
   });
   ipcMain.handle(IPC.PET_MENU_SPECIES, (event) => {
     if (event.sender !== window.webContents) return [];
@@ -134,6 +136,10 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: (anc
         onMenuSelection(id);
       }, dismissPet, () => setPetVisible(false));
     }
+  });
+  ipcMain.on(IPC.DROP_CONTENT, (event, content) => {
+    if (event.sender === window.webContents && typeof content?.text === 'string' &&
+        content.text.length <= 100000 && typeof content.imageUrl === 'string' && content.imageUrl.length <= 16000000) onContent(content);
   });
   ipcMain.on(IPC.PHOTO_DROP, (event, photos) => {
     if (event.sender !== window.webContents || !Array.isArray(photos) ||
@@ -169,6 +175,8 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: (anc
       dismissed.delete(scene.id);
     }
     rendererReady = true;
+    window.webContents.send(IPC.PERCHED, perchedId);
+    window.webContents.send(IPC.SIZE_CHANGED, petSize);
     publish(scene);
     watchActiveSpecies(activeSpecies, publish);
   });
@@ -183,15 +191,24 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: (anc
   return {
     state: () => ({ present: isPetVisible() && (!rendererReady || visibleSpecies.size > 0), species: speciesOptions() }),
     show,
+    perch(id: string | null) {
+      perchedId = id;
+      if (rendererReady && !window.isDestroyed()) window.webContents.send(IPC.PERCHED, id);
+    },
+    setSize(size: number) {
+      if (![64, 80, 96, 112, 128].includes(size) || petSize === size) return;
+      petSize = size;
+      if (rendererReady && !window.isDestroyed()) window.webContents.send(IPC.SIZE_CHANGED, size);
+    },
     importPhoto: (source: string) => show(saveImagePet(source)),
     showBriefing(id: string, text: string) {
       if (!window.isDestroyed() && window.isVisible() && visibleSpecies.has(id)) {
         window.webContents.send(IPC.SHOW_BRIEFING, id, text);
       }
     },
-    speakSchedule(text: string) {
-      if (window.isDestroyed() || !rendererReady || !window.isVisible() || !visibleSpecies.size) return false;
-      window.webContents.send(IPC.SCHEDULE_SPEECH, text);
+    speakSchedule(text: string, id = activeSpecies) {
+      if (window.isDestroyed() || !rendererReady || !window.isVisible() || !visibleSpecies.has(id)) return false;
+      window.webContents.send(IPC.SCHEDULE_SPEECH, text, id);
       return true;
     },
   };

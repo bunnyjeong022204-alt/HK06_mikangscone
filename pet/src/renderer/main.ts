@@ -1,3 +1,4 @@
+import '../../../src/drop-content.js';
 import type { SpeciesConfig, ChatterConfig, PetMotion, SpeciesAnimationDef } from '../shared/speciesSchema';
 import type { PetState } from '../shared/petState';
 import { PetStateMachine } from './PetStateMachine';
@@ -9,12 +10,12 @@ import { EmptyRosterPaper } from './EmptyRosterPaper';
 import { FishingRig, type FishingPose } from './FishingRig';
 import { BehaviorController } from './BehaviorController';
 import type { Rect, Vec2 } from './types';
-import { advanceFlight, landingReaction, launchVelocity, releaseVelocity, RELEASE_SAMPLE_WINDOW_MS, type Flight, type PointerSample } from './throwMotion';
 import { motionCue, personalityOf, poseFor, type MotionCue } from './petMotion';
-import { canHitPet, petContact, petRebound, wallSide, type CollisionPath } from './petCollision';
 import { MAX_DROPPED_PHOTOS, MAX_PHOTO_DROP_BYTES, type DroppedPhoto } from '../shared/ipcContract';
 
 interface Companion {
+  original: SpeciesConfig;
+  paused: boolean;
   species: SpeciesConfig;
   state: PetStateMachine;
   animation: AnimationController;
@@ -23,14 +24,9 @@ interface Companion {
   until: number;
   speakingUntil: number;
   facing: number;
-  airborne?: Flight;
-  collisionPath?: CollisionPath;
   cue?: MotionCue;
   clip?: SpeciesAnimationDef;
   playbackKey?: PetMotion | PetState;
-  throwSpeed: number;
-  impactSpeed: number;
-  impactSide: -1 | 1;
   nextCueAt: number;
   nextLookAt: number;
   pointerDistance: number;
@@ -41,13 +37,13 @@ interface Companion {
   toyPlay?: { origin: Vec2; position: Vec2; strike: Vec2; aim: Vec2; side: -1 | 1; hit: boolean };
 }
 
-const PET_SIZE = 72;
-const BRIEFING_HOLD_MS = 500;
+let petSize = 80;
+const BRIEFING_HOLD_MS = 1200;
 
 function sizeSpecies(species: SpeciesConfig): SpeciesConfig {
   const idle = species.animations.idle;
   const scale = species.behavior.spriteScale;
-  const ratio = PET_SIZE / (idle?.displaySize ?? (idle?.frameWidth ?? 475) * scale);
+  const ratio = petSize / (idle?.displaySize ?? (idle?.frameWidth ?? 475) * scale);
   function resizeClips<T extends Partial<Record<string, SpeciesAnimationDef>>>(clips: T): T {
     return Object.fromEntries(Object.entries(clips).map(([key, clip]) => [
       key, clip?.displaySize ? { ...clip, displaySize: clip.displaySize * ratio } : clip,
@@ -67,9 +63,6 @@ function positionSpeech(el: HTMLElement, center: number, top: number, bottom: nu
   el.toggleAttribute('data-below', below);
 }
 const HOVER_EXIT_PADDING = 5;
-const WALL_CLING_HOLD_MS = 550;
-const WALL_CLING_SLIDE_MS = 700;
-const WALL_CLING_MAX_SPEED = 220;
 const FACE_MOTIONS = {
   left: { poke: 'pokeLeft', grab: 'grabLeft' },
   right: { poke: 'pokeRight', grab: 'grabRight' },
@@ -77,7 +70,7 @@ const FACE_MOTIONS = {
 } as const;
 
 function faceRegion(offset: Vec2) {
-  return offset.y / PET_SIZE < 0.49 ? 'forehead' : offset.x < PET_SIZE / 2 ? 'left' : 'right';
+  return offset.y / petSize < 0.49 ? 'forehead' : offset.x < petSize / 2 ? 'left' : 'right';
 }
 
 const REACTION_LINES = {
@@ -112,10 +105,8 @@ async function main(): Promise<void> {
   const bounds = await window.petAPI.getWorkArea();
   const floorX = (x: number, size: number) => Math.max(0, Math.min(Math.max(0, bounds.width - size), x));
   const petPosition = (pet: Companion) => {
-    const activePosition = pet.toyPlay?.position ?? pet.airborne?.position;
-    if (activePosition) return activePosition;
-    const size = PET_SIZE;
-    return { x: floorX(pet.behavior.getPosition().x, size), y: Math.max(0, bounds.height - size) };
+    const size = petSize;
+    return { x: floorX(pet.toyPlay?.position.x ?? pet.behavior.getPosition().x, size), y: Math.max(0, bounds.height - size) };
   };
   let pets: Companion[] = [];
   let sceneReady = false;
@@ -126,14 +117,18 @@ async function main(): Promise<void> {
   let previous = performance.now();
   let reply: { pet: Companion; text: string; at: number } | null = null;
   let pointer: Vec2 = { x: -1000, y: -1000 };
-  let held: { pet: Companion; pointerId: number; start: Vec2; offset: Vec2; region: ReturnType<typeof faceRegion>; since: number; dragging: boolean; samples: PointerSample[] } | null = null;
+  let held: { pet: Companion; pointerId: number; start: Vec2; offset: Vec2; region: ReturnType<typeof faceRegion>; since: number; dragging: boolean } | null = null;
   let rightPress: { pet: Companion; pointerId: number; timer: number; briefed: boolean } | null = null;
   let activeBriefing: { pet: Companion; until: number } | undefined;
-  let briefingHover: { pet: Companion; since: number; requested: boolean } | undefined;
+  let perchedId: string | null = null;
+  window.petAPI.onPerched((id) => { perchedId = id; });
   let briefingHold: Companion | undefined;
-  let briefingLeaveAt = Infinity;
+
   let briefingBounds: DOMRect | undefined;
   let clickThrough = true;
+  const macDragTracking = navigator.platform.startsWith('Mac');
+  let fileDrag = false;
+  let dropTarget: Companion | undefined;
   let hoveredPet: Companion | undefined;
   let toyEnabled = false;
   let toyNextPlayAt = 0;
@@ -172,11 +167,12 @@ async function main(): Promise<void> {
   document.body.append(briefingCard);
   window.petAPI.onBriefing((id, text) => {
     const pet = pets.find((item) => item.species.id === id);
-    if (!pet || (briefingHold !== pet && briefingHover?.pet !== pet)) return;
+    if (!pet || briefingHold !== pet) return;
+    briefingCard.dataset.speaker = pet.species.id;
     briefingBody.textContent = text;
-    activeBriefing = { pet, until: briefingHold === pet ? performance.now() + 8000 : Infinity };
+    activeBriefing = { pet, until: performance.now() + 8000 };
     briefingHold = undefined;
-    briefingLeaveAt = Infinity;
+
   });
   let nextPointerPoll = 0;
   const pollPointer = () => !held && (clickThrough || !!hoveredPet || !!activeBriefing || pets.some((pet) => pet.chasing));
@@ -223,17 +219,18 @@ async function main(): Promise<void> {
   function reactWithLine(pet: Companion, reaction: keyof typeof REACTION_LINES, now: number) {
     if (!chatter?.enabled || resting(pet)) return;
     if (reply?.pet === pet) reply = null;
-    pet.bubble.textContent = random(REACTION_LINES[reaction]);
+    const lines = pet.species.dialogue?.reactions?.[reaction];
+    pet.bubble.textContent = random(lines?.length ? lines : REACTION_LINES[reaction]);
     pet.reactionUntil = now + (reaction === 'landing' ? 3200 : 1600);
     pet.until = pet.reactionUntil;
     pet.speakingUntil = reaction === 'landing' ? pet.until : 0;
     pet.bubble.hidden = false;
   }
   const canChat = (pet: Companion, now: number) =>
-    !resting(pet) && !pet.airborne && !pet.cue && held?.pet !== pet && now >= pet.reactionUntil;
-  let pendingSchedule: { text: string; expires: number } | null = null;
-  window.petAPI.onScheduleSpeech((text) => {
-    pendingSchedule = { text, expires: performance.now() + 90_000 };
+    pet.species.id !== perchedId && !resting(pet) && !pet.cue && held?.pet !== pet && now >= pet.reactionUntil;
+  let pendingSchedule: { text: string; id: string; expires: number } | null = null;
+  window.petAPI.onScheduleSpeech((text, id) => {
+    pendingSchedule = { id, text, expires: performance.now() + 90_000 };
   });
   function converse(a: Companion, b: Companion, now: number) {
     if (!chatter || !canChat(a, now) || !canChat(b, now)) return;
@@ -241,7 +238,7 @@ async function main(): Promise<void> {
     const lines = random(a.species.dialogue?.dialogues.length ? a.species.dialogue.dialogues : chatter.dialogues);
     if (!lines) return;
     say(a, lines[0], now);
-    reply = { pet: b, text: lines[1], at: now + 1900 };
+    reply = { pet: b, text: b.species.dialogue?.reply || lines[1], at: now + 1900 };
     b.speakingUntil = now + 1900 + chatter.bubbleSec * 1000;
     nextMeeting = now + 45000;
   }
@@ -262,10 +259,20 @@ async function main(): Promise<void> {
       schedule();
     }
   });
+  window.petAPI.onSizeChanged((size) => {
+    if (size === petSize) return;
+    petSize = size;
+    for (const pet of pets) {
+      pet.species = sizeSpecies(pet.original);
+      pet.playbackKey = undefined;
+
+    }
+    toyProp = undefined;
+  });
   window.petAPI.onSpeciesLoaded((loaded) => {
     cancelRightPress();
     activeBriefing = undefined;
-    briefingHover = undefined;
+
     briefingHold = undefined;
     briefingBounds = undefined;
     briefingCard.hidden = true;
@@ -281,19 +288,20 @@ async function main(): Promise<void> {
       renderer.preload(species.motions?.fireBreath);
       const state = new PetStateMachine();
       const animation = new AnimationController();
-      const size = PET_SIZE;
+      const size = petSize;
       const x = floorX(bounds.width * 0.25 + index * 160, size);
       const patrolDirection = species.motions?.frontWalk && species.motions.backWalk ?
         (x > (bounds.width - size) / 2 ? 1 : -1) : undefined;
       const behavior = new BehaviorController(state, species.behavior, { x, y: 0 }, () => ['idle', 'sit', 'sleep'], patrolDirection);
       const bubble = document.createElement('div');
+      bubble.dataset.speaker = species.id;
       bubble.className = 'speech'; bubble.hidden = true; document.body.append(bubble);
       const initialAnimation = animationFor(species, state.getState());
       if (initialAnimation) animation.setAnimation(initialAnimation);
       const now = performance.now();
-      return { species, state, animation, behavior, bubble, until: 0, speakingUntil: 0, facing: 0,
+      return { original, paused: false, species, state, animation, behavior, bubble, until: 0, speakingUntil: 0, facing: 0,
         clip: initialAnimation, playbackKey: state.getState(), reactionUntil: 0,
-        throwSpeed: 0, impactSpeed: 0, impactSide: 1 as const, nextCueAt: now + 2400,
+        nextCueAt: now + 2400,
         nextLookAt: 0, pointerDistance: Infinity };
     });
     nextChat = performance.now() + 6000; nextMeeting = performance.now() + 20000; nextEncounter = performance.now() + 4000;
@@ -321,31 +329,52 @@ async function main(): Promise<void> {
   }
   window.petAPI.ready();
   const hit = () => [...pets].reverse().find((pet) => {
+    if (pet.species.id === perchedId) return false;
     const def = pet.clip;
     if (!def) return false;
     const frame = pet.animation.getCurrentFrameRect(pet.facing);
     const pose = pet.cue && poseFor(pet.cue, previous, pet.species);
     const pos = petPosition(pet);
     const scale = pet.species.behavior.spriteScale;
-    const box = pose && frame ? renderer.getPoseBounds(def, frame, pos, scale, pose, PET_SIZE) : renderer.getSpriteBounds(def, pos, scale);
+    const box = pose && frame ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize) : renderer.getSpriteBounds(def, pos, scale);
     // Keep the current target through small frame-to-frame changes at its edge.
-    const padding = pet === hoveredPet ? HOVER_EXIT_PADDING : 0;
+    const padding = fileDrag ? 20 : pet === hoveredPet ? HOVER_EXIT_PADDING : 0;
     return pointer.x >= box.x - padding && pointer.x <= box.x + box.width + padding &&
       pointer.y >= box.y - padding && pointer.y <= box.y + box.height + padding;
   });
-  canvas.addEventListener('dragover', (event) => {
-    if (!event.dataTransfer?.types.includes('Files')) return;
+  function trackDrop(event: DragEvent) {
+    if (!event.dataTransfer || !window.MemoDrop.accepts(event.dataTransfer)) return;
+    fileDrag = true;
     event.preventDefault();
     pointer = { x: event.clientX, y: event.clientY };
-    event.dataTransfer.dropEffect = hit() ? 'copy' : 'none';
-  });
+    dropTarget = hit();
+    event.dataTransfer.dropEffect = dropTarget ? 'copy' : 'none';
+    updateMouseTarget();
+  }
+  canvas.addEventListener('dragenter', trackDrop);
+  canvas.addEventListener('dragover', trackDrop);
+  canvas.addEventListener('dragleave', () => { fileDrag = false; dropTarget = undefined; });
   canvas.addEventListener('drop', async (event) => {
     event.preventDefault();
     pointer = { x: event.clientX, y: event.clientY };
-    if (!hit() || !event.dataTransfer) return;
-    const images = Array.from(event.dataTransfer.files).filter(file =>
+    const target = hit() || dropTarget;
+    fileDrag = false; dropTarget = undefined;
+    if (!target || !event.dataTransfer) return;
+    const files = Array.from(event.dataTransfer.files);
+    if (!files.length) {
+      for (const item of Array.from(event.dataTransfer.items)) {
+        const file = item.kind === 'file' && item.getAsFile();
+        if (file) files.push(file);
+      }
+    }
+    const images = files.filter(file =>
       file.type.startsWith('image/') || /\.(jpe?g|jfif|pjpeg|pjp|png|apng|gif|webp|bmp|dib|svg|avif|heic|heif|ico|cur|tiff?)$/i.test(file.name));
-    if (!images.length) return window.petAPI.photoError('사진 파일을 놓아 주세요.');
+    if (!images.length) {
+      const content = window.MemoDrop.content(event.dataTransfer);
+      if (content.imageUrl || content.text) window.petAPI.sendContent(content);
+      else window.petAPI.photoError('사진이나 글을 놓아 주세요.');
+      return;
+    }
     const photos: DroppedPhoto[] = [];
     let totalBytes = 0;
     for (const file of images) {
@@ -366,18 +395,16 @@ async function main(): Promise<void> {
     grab.dragging = true;
     pet.cue = undefined;
     pet.state.transition('idle');
-    pet.behavior.interruptForDrag();
+    pet.state.transition('walk');
     hush(pet);
-    const motion = FACE_MOTIONS[grab.region].grab;
-    if (motion && pet.species.motions?.[motion]) cue(pet, motion, now);
     reactWithLine(pet, 'grab', now);
   }
   function positionHeld(grab: NonNullable<typeof held>) {
-    const size = PET_SIZE;
-    grab.pet.airborne = { position: {
-      x: Math.max(0, Math.min(bounds.width - size, pointer.x - grab.offset.x)),
-      y: Math.max(0, Math.min(bounds.height - size, pointer.y - grab.offset.y)),
-    }, velocity: { x: 0, y: 0 } };
+    const size = petSize;
+    const x = floorX(pointer.x - grab.offset.x, size);
+    const previousX = grab.pet.behavior.getPosition().x;
+    if (x !== previousX) grab.pet.facing = x < previousX ? 6 : 2;
+    grab.pet.behavior.setPosition({ x, y: 0 });
   }
   function moveHeld(event: PointerEvent) {
     if (!event.isPrimary || (held && held.pointerId !== event.pointerId)) return;
@@ -385,12 +412,8 @@ async function main(): Promise<void> {
     lastPointerAt = performance.now();
     toyPointer = pointer;
     if (!held) return;
-    held.samples = held.samples.filter((sample) => event.timeStamp - sample.time <= RELEASE_SAMPLE_WINDOW_MS);
-    held.samples.push({ ...pointer, time: event.timeStamp });
     const drift = Math.hypot(pointer.x - held.start.x, pointer.y - held.start.y);
-    const flickVelocity = !held.dragging && event.type === 'pointerup' && drift >= 3 ? releaseVelocity(held.samples) : undefined;
-    const finalFlick = !!flickVelocity && (flickVelocity.x !== 0 || flickVelocity.y !== 0);
-    if (!held.dragging && (drift >= 5 || finalFlick)) beginDrag(held);
+    if (!held.dragging && drift >= 5) beginDrag(held);
     if (held.dragging) positionHeld(held);
   }
   canvas.addEventListener('pointermove', moveHeld);
@@ -424,13 +447,12 @@ async function main(): Promise<void> {
     const pos = petPosition(pet);
     if (pet.toyPlay) {
       pet.toyPlay = undefined;
-      pet.airborne = { position: pos, velocity: { x: 0, y: 0 } };
+      pet.behavior.setPosition({ x: pos.x, y: 0 });
       toyNextPlayAt = performance.now() + 1200;
     }
     const offset = { x: pointer.x - pos.x, y: pointer.y - pos.y };
     held = { pet, pointerId: event.pointerId, start: { ...pointer }, offset, region: faceRegion(offset),
-      since: performance.now(), dragging: false, samples: [{ ...pointer, time: event.timeStamp }] };
-    if (pet.airborne) beginDrag(held);
+      since: performance.now(), dragging: false };
     canvas.setPointerCapture(event.pointerId);
   });
   function release(event: Event) {
@@ -439,39 +461,28 @@ async function main(): Promise<void> {
       cancelRightPress();
       if (event instanceof PointerEvent && event.type === 'pointerup' && event.button === 2 && !briefed) {
         activeBriefing = undefined;
-        briefingHover = { pet, since: performance.now(), requested: true };
+        briefingHold = undefined;
         const pos = petPosition(pet);
         briefingBounds = undefined;
-        window.petAPI.openBookmarks({ ...pos, width: PET_SIZE, height: PET_SIZE });
+        window.petAPI.openBookmarks({ ...pos, width: petSize, height: petSize });
       }
     }
     if (!held || (event instanceof PointerEvent && event.pointerId !== held.pointerId)) return;
     if (event instanceof PointerEvent && event.type === 'pointerup') moveHeld(event);
-    const { pet, dragging, offset, region, samples } = held;
+    const { pet, dragging, offset, region } = held;
     held = null;
-    if (dragging && pet.airborne) {
-      hush(pet);
-      const velocity = event.type === 'pointerup' ? releaseVelocity(samples) : { x: 0, y: 0 };
-      const { x, y } = velocity;
-      const floor = Math.max(0, bounds.height - PET_SIZE);
-      pet.airborne.velocity = launchVelocity(velocity, floor - pet.airborne.position.y);
-      pet.throwSpeed = Math.hypot(x, y);
-      const side = event.type === 'pointerup' ? wallSide(pet.airborne.position, PET_SIZE, bounds.width, bounds.height) : undefined;
-      pet.collisionPath = pet.throwSpeed > 0 ? 'throw' : side;
-      pet.impactSpeed = 0;
-      pet.impactSide = x === 0 ? (pet.facing >= 5 ? -1 : 1) : x < 0 ? -1 : 1;
+    if (dragging) {
       pet.cue = undefined;
-      if (side && clingToWall(pet, pet.airborne, side, pet.throwSpeed, performance.now())) return;
-      if (pet.throwSpeed > 0 || pet.airborne.position.y < floor - 1) {
-        cue(pet, 'fly', performance.now(), pet.impactSide, pet.throwSpeed / 1300);
-      }
-    }
-    else if (event.type === 'pointerup') {
+      pet.behavior.resumeAfterDrag();
+    } else if (event.type === 'pointerup') {
       const now = performance.now();
-      if (pet.chasing || (pet.nextBurstAt ?? 0) > now) return;
+      pet.paused = !pet.paused;
+      pet.cue = undefined;
+      pet.state.transition('idle');
+      if (!pet.paused || pet.chasing || (pet.nextBurstAt ?? 0) > now) return;
       if (pet.species.motions?.scratch) {
         pet.state.transition('idle');
-        cue(pet, 'scratch', now, offset.x < PET_SIZE / 2 ? -1 : 1);
+        cue(pet, 'scratch', now, offset.x < petSize / 2 ? -1 : 1);
         return;
       }
       const motion = FACE_MOTIONS[region].poke;
@@ -494,7 +505,7 @@ async function main(): Promise<void> {
     pointer = { x: event.clientX, y: event.clientY };
     const pet = hit();
     const action = pet?.species.behavior.doubleClick;
-    if (!pet || !action || pet.airborne) return;
+    if (!pet || !action) return;
     event.preventDefault();
     if (action === 'chase') {
       if (pet.chasing) {
@@ -504,6 +515,7 @@ async function main(): Promise<void> {
         pet.toyPlay = undefined;
         pet.cue = undefined;
         hush(pet);
+        pet.paused = false;
         pet.chasing = true;
       }
       return;
@@ -511,7 +523,7 @@ async function main(): Promise<void> {
     const now = performance.now();
     if ((pet.nextBurstAt ?? 0) > now) return;
     const pos = petPosition(pet);
-    const size = PET_SIZE;
+    const size = petSize;
     const side = pos.x < size * .6 ? 1 : pos.x + size * 1.65 > bounds.width || pet.facing >= 5 ? -1 : 1;
     pet.nextBurstAt = now + 1000;
     pet.cue = undefined;
@@ -538,150 +550,15 @@ async function main(): Promise<void> {
   });
   window.addEventListener('blur', release);
 
-  function bodyBounds(pet: Companion, position: Vec2): Rect {
-    const size = PET_SIZE;
-    const frame = pet.animation.getCurrentFrameRect(pet.facing);
-    const box = pet.clip?.pixelArt && frame ? renderer.getPaintBounds(pet.clip, frame, position, pet.species.behavior.spriteScale) :
-      { x: position.x + size * 0.15, y: position.y + size * 0.15, width: size * 0.7, height: size * 0.85 };
-    return { x: box.x + box.width * 0.08, y: box.y + box.height * 0.06, width: box.width * 0.84, height: box.height * 0.94 };
-  }
-
-  function collideWithPet(pet: Companion, flight: Flight, next: Flight, now: number, dt: number): boolean {
-    if (pet.collisionPath === undefined) return false;
-    const from = flight.position;
-    const travel = { x: next.position.x - from.x, y: next.position.y - from.y };
-    const body = bodyBounds(pet, from);
-    let closest: { target: Companion; position: Vec2; wall?: -1 | 1; time: number; normal: Vec2 } | undefined;
-    for (const target of pets) {
-      if (target === pet || target.airborne || held?.pet === target) continue;
-      const position = petPosition(target);
-      const wall = wallSide(position, PET_SIZE, bounds.width, bounds.height);
-      if (!canHitPet(pet.collisionPath, from, next.position, position, wall)) continue;
-      const contact = petContact(body, travel, bodyBounds(target, position));
-      if (contact && (!closest || contact.time < closest.time)) closest = { target, position, wall, ...contact };
-    }
-    if (!closest) return false;
-
-    const { target, position, wall, time, normal } = closest;
-    const side = normal.x !== 0 ? (normal.x < 0 ? 1 : -1) : (wall ?? (position.x < from.x ? -1 : 1));
-    const incoming = { x: flight.velocity.x, y: flight.velocity.y + 1350 * dt * time };
-    const response = petRebound(incoming, normal, side, wall);
-    const strength = Math.min(1, response.speed / 920);
-    pet.airborne = { position: { x: from.x + travel.x * time, y: from.y + travel.y * time }, velocity: response.source };
-    pet.impactSpeed = Math.max(pet.impactSpeed, response.speed);
-    pet.impactSide = side;
-    cue(pet, 'petBump', now, side, strength);
-
-    hush(target);
-    target.state.transition('idle');
-    target.behavior.interruptForDrag();
-    target.airborne = { position, velocity: response.target };
-    target.collisionPath = wall;
-    target.throwSpeed = 0;
-    target.impactSpeed = response.speed * 0.7;
-    target.impactSide = wall ?? side;
-    cue(target, 'petBump', now, side, strength * 0.7);
-    return true;
-  }
-
-  function wallX(side: -1 | 1) {
-    return side < 0 ? 0 : Math.max(0, bounds.width - PET_SIZE);
-  }
-
-  function clingToWall(pet: Companion, flight: Flight, side: -1 | 1, speed: number, now: number) {
-    const clearance = bounds.height - PET_SIZE - flight.position.y;
-    if (!pet.species.motions?.wallCling || speed > WALL_CLING_MAX_SPEED || clearance < 25) return false;
-    pet.airborne = { position: { x: wallX(side), y: flight.position.y }, velocity: { x: 0, y: 0 } };
-    pet.collisionPath = undefined;
-    pet.throwSpeed = 0;
-    pet.impactSide = side;
-    cue(pet, 'wallCling', now, side);
-    return true;
-  }
-
-  function simulateFlight(pet: Companion, now: number, delta: number) {
-    if (!pet.airborne || held?.pet === pet) return;
-    const size = PET_SIZE;
-    const maxY = Math.max(0, bounds.height - size);
-    if (pet.cue?.key === 'wallCling') {
-      const { start, side } = pet.cue;
-      const { position } = pet.airborne;
-      const age = now - start;
-      position.x = wallX(side);
-      position.y = Math.min(position.y, maxY);
-      if (age < WALL_CLING_HOLD_MS) return;
-      if (age < WALL_CLING_HOLD_MS + WALL_CLING_SLIDE_MS && position.y < maxY - 12) {
-        position.y = Math.min(maxY - 12, position.y + delta * .10);
-        return;
-      }
-      pet.airborne.velocity = { x: -side * 95, y: 80 };
-      cue(pet, 'wallFall', now, side);
-    }
-    if (pet.cue?.key === 'petBump') {
-      const recoilUntil = Math.min(pet.cue.end, pet.cue.start + 45 + pet.cue.strength * 40);
-      if (now < recoilUntil) return;
-      if (now >= pet.cue.end) {
-        const wall = pet.collisionPath;
-        cue(pet, typeof wall === 'number' ? 'wallFall' : 'fly', now, pet.impactSide);
-      }
-    }
-    if (pet.cue?.key === 'wallImpact') {
-      if (now < pet.cue.end) return;
-      cue(pet, 'wallFall', now, pet.impactSide);
-    }
-    const dt = delta / 1000;
-    const next = advanceFlight(pet.airborne, dt, Math.max(0, bounds.width - size), maxY);
-    if (collideWithPet(pet, pet.airborne, next, now, dt)) return;
-    pet.airborne = next;
-    if (next.wall && next.wallSpeed >= pet.impactSpeed) {
-      pet.impactSide = next.wall === 'left' ? -1 : 1;
-      if (pet.collisionPath === 'throw' && clingToWall(pet, next, pet.impactSide, pet.throwSpeed, now)) return;
-      pet.impactSpeed = next.wallSpeed;
-      pet.facing = pet.impactSide < 0 ? 6 : 2;
-      cue(pet, 'wallImpact', now, pet.impactSide, Math.min(1, next.wallSpeed / 920));
-      if (next.wallSpeed > 460 && !pet.species.behavior.alwaysLandOnFeet) reactWithLine(pet, 'bump', now);
-      if (next.landed) {
-        pet.airborne = { position: next.position, velocity: { x: 0, y: next.landingSpeed } };
-        return;
-      }
-    }
-    const distanceToFloor = maxY - next.position.y;
-    if (!next.landed && pet.species.motions?.landPrepare && pet.cue?.key !== 'landPrepare' &&
-        next.velocity.y > 90 && distanceToFloor <= Math.min(65, next.velocity.y * .10)) {
-      cue(pet, 'landPrepare', now, pet.impactSide);
-    }
-    if (next.landed) {
-      pet.behavior.setPosition({ x: floorX(next.position.x, size), y: 0 });
-      pet.airborne = undefined;
-      pet.collisionPath = undefined;
-      const severity = Math.max(pet.impactSpeed, next.landingSpeed);
-      const reaction = landingReaction(pet.throwSpeed, next.landingSpeed, pet.impactSpeed);
-      pet.impactSpeed = severity;
-      cue(pet, 'land', now, pet.impactSide, Math.min(reaction === 'playful' ? 0.3 : 1, severity / 920));
-      if (reaction === 'hurt' && !pet.species.behavior.alwaysLandOnFeet) {
-        pet.state.transition('hurt');
-        reactWithLine(pet, 'landing', now);
-      } else if (reaction === 'playful') {
-        reactWithLine(pet, 'playful', now);
-      }
-    }
-  }
-
   function finishCue(pet: Companion, now: number) {
-    const active = pet.cue;
-    if (!active || pet.airborne || pet.toyPlay || now < active.end) return;
-    pet.cue = undefined;
-    if (active.key === 'land' && pet.state.getState() === 'hurt') cue(pet, 'ouch', now, active.side);
-    else if (active.key === 'land' && pet.species.behavior.alwaysLandOnFeet) pet.behavior.resumeAfterDrag();
-    else if (active.key === 'land' || active.key === 'ouch') cue(pet, 'recover', now, active.side);
-    else if (active.key === 'recover') pet.behavior.resumeAfterDrag();
+    if (pet.cue && !pet.toyPlay && now >= pet.cue.end) pet.cue = undefined;
   }
 
   function playWithToy(pet: Companion, now: number, delta: number): boolean {
     const clips = pet.species.motions;
-    if (!clips?.toyWatch || !clips.toyPounce || held?.pet === pet || pet.airborne || !hasToy(pet)) return false;
+    if (!clips?.toyWatch || !clips.toyPounce || held?.pet === pet || !hasToy(pet)) return false;
     const play = pet.toyPlay;
-    const size = PET_SIZE;
+    const size = petSize;
     const floor = Math.max(0, bounds.height - size);
     const maxX = Math.max(0, bounds.width - size);
     const xInBounds = (x: number) => Math.min(maxX, Math.max(0, x));
@@ -706,10 +583,8 @@ async function main(): Promise<void> {
       else if (active.key === 'toyPounce') {
         const p = Math.min(1, (now - active.start) / (active.end - active.start));
         const hitAt = 3 / 7;
-        const travel = p <= hitAt ? p / hitAt : (1 - p) / (1 - hitAt);
-        const easedY = Math.sin(travel * Math.PI / 2);
         play.position = { x: xInBounds(play.origin.x + (play.strike.x - play.origin.x) * Math.min(1, p / hitAt)),
-          y: floor + (play.strike.y - floor) * easedY };
+          y: floor };
         if (!play.hit && p >= hitAt) {
           play.hit = true;
           if (toyEnabled && Math.hypot(lure.x - play.aim.x, lure.y - play.aim.y) <= size * 0.3) {
@@ -770,7 +645,7 @@ async function main(): Promise<void> {
     }
     const cat = toyOwner();
     fishingPose = cat?.species.fishingToy && pointerInArea()
-      ? fishingRig.update(toyPointer, PET_SIZE, bounds.width, bounds.height, delta) : undefined;
+      ? fishingRig.update(toyPointer, petSize, bounds.width, bounds.height, delta) : undefined;
   }
 
   function renderToy(delta: number) {
@@ -789,14 +664,14 @@ async function main(): Promise<void> {
     propAnimation.update(delta);
     const frame = propAnimation.getCurrentFrameRect();
     if (!frame) return;
-    const size = PET_SIZE;
+    const size = petSize;
     renderer.render(toyProp, frame, { x: toyPointer.x - size * 0.91, y: toyPointer.y - size * 0.92 }, cat.species.behavior.spriteScale);
   }
 
   function cueForMovement(pet: Companion, now: number, after: Vec2, previousState: PetState) {
     const state = pet.state.getState();
     const personality = personalityOf(pet.species);
-    const size = PET_SIZE;
+    const size = petSize;
     const onFloor = after.y >= bounds.height - size - 0.5;
     const side = after.x < bounds.width / 2 ? -1 : 1;
     if (state === 'sleep') {
@@ -826,7 +701,7 @@ async function main(): Promise<void> {
 
   function encounter(now: number) {
     if (now < nextEncounter || held) return;
-    const walkers = pets.filter((pet) => !pet.cue && !pet.airborne &&
+    const walkers = pets.filter((pet) => pet.species.id !== perchedId && !pet.cue &&
       pet.state.getState() === 'walk' && now >= pet.speakingUntil);
     for (const a of walkers) {
       if (a.facing !== 2) continue;
@@ -834,8 +709,8 @@ async function main(): Promise<void> {
       const b = walkers.find((other) => {
         const right = petPosition(other);
         const gap = right.x - left.x;
-        return other.facing === 6 && gap > 0 && gap < (PET_SIZE + PET_SIZE) * 0.55 &&
-          left.y + PET_SIZE >= bounds.height - 1 && right.y + PET_SIZE >= bounds.height - 1;
+        return other.facing === 6 && gap > 0 && gap < (petSize + petSize) * 0.55 &&
+          left.y + petSize >= bounds.height - 1 && right.y + petSize >= bounds.height - 1;
       });
       if (!b) continue;
       cue(a, 'meet', now, 1);
@@ -853,7 +728,7 @@ async function main(): Promise<void> {
       pointer.x >= briefingBounds.left && pointer.x <= briefingBounds.right &&
       pointer.y >= briefingBounds.top && pointer.y <= briefingBounds.bottom;
     const capturingWheel = toyEnabled && pointerInArea() && !!toyOwner()?.species.fishingToy;
-    const ignore = !held && !rightPress && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hoveredPet && !overBriefing;
+    const ignore = !dropTarget && !held && !rightPress && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hoveredPet && !overBriefing;
     if (ignore !== clickThrough) { clickThrough = ignore; window.petAPI.setClickThrough(ignore); }
     canvas.classList.toggle('is-dragging', !!held?.dragging);
   }
@@ -863,7 +738,7 @@ async function main(): Promise<void> {
       pet.state.transition('idle');
       return;
     }
-    const size = PET_SIZE;
+    const size = petSize;
     const target = floorX(pointer.x - size / 2, size);
     const distance = pet.behavior.getPosition().x;
     const gap = target - distance;
@@ -886,9 +761,10 @@ async function main(): Promise<void> {
     emptyPaper.update(empty, petMenu.isOpen, bounds.width, bounds.height, delta);
     // Forwarded movement can be missed when a pet walks under a stationary cursor
     // or the cursor leaves the whole work area from an interactive pet.
-    if (sceneReady && pollPointer() && !document.hidden && now >= nextPointerPoll && now - lastPointerAt > 90) {
-      nextPointerPoll = now + 60;
+    if (sceneReady && pollPointer() && !document.hidden && now >= nextPointerPoll && (macDragTracking || now - lastPointerAt > 90)) {
+      nextPointerPoll = now + 40;
       void window.petAPI.getCursorPoint().then((point) => {
+        if (point.fileDrag !== undefined && !dropTarget) fileDrag = point.fileDrag;
         if (!pollPointer() || performance.now() - lastPointerAt <= 90) return;
         pointer = point;
         updateMouseTarget();
@@ -903,7 +779,7 @@ async function main(): Promise<void> {
     if (reply && now >= reply.at) { say(reply.pet, reply.text, now); reply = null; }
     if (pendingSchedule && now >= pendingSchedule.expires) pendingSchedule = null;
     if (pendingSchedule && !petMenu.isOpen && !reply && !document.hidden) {
-      const speaker = pets.find((pet) => now >= pet.until && canChat(pet, now));
+      const speaker = pets.find((pet) => pet.species.id === pendingSchedule?.id && now >= pet.until && canChat(pet, now));
       if (speaker) {
         say(speaker, pendingSchedule.text, now, false);
         pendingSchedule = null;
@@ -918,34 +794,22 @@ async function main(): Promise<void> {
       else nextChat = now + 1500;
     }
     encounter(now);
-    const hover = held || rightPress || petMenu.isOpen ? undefined : hit();
-    if (briefingHover?.pet !== hover) briefingHover = hover ? { pet: hover, since: now, requested: false } : undefined;
-    if (briefingHover && !briefingHover.requested && now - briefingHover.since >= 500) {
-      briefingHover.requested = true;
-      if (activeBriefing?.pet !== briefingHover.pet) window.petAPI.requestBriefing(briefingHover.pet.species.id);
-    }
-    if (activeBriefing) {
-      const overCard = briefingBounds && pointer.x >= briefingBounds.left && pointer.x <= briefingBounds.right &&
-        pointer.y >= briefingBounds.top && pointer.y <= briefingBounds.bottom;
-      if (hover === activeBriefing.pet || overCard) briefingLeaveAt = Infinity;
-      else if (briefingLeaveAt === Infinity) briefingLeaveAt = now + 240;
-      if (now >= activeBriefing.until || (activeBriefing.until === Infinity && now >= briefingLeaveAt) ||
-          held || petMenu.isOpen || !pets.includes(activeBriefing.pet)) {
-        activeBriefing = undefined; briefingBounds = undefined;
-      }
+    if (activeBriefing && (now >= activeBriefing.until || held || petMenu.isOpen || !pets.includes(activeBriefing.pet))) {
+      activeBriefing = undefined;
+      briefingBounds = undefined;
     }
     briefingCard.hidden = !activeBriefing;
     for (const pet of pets) {
+      if (pet.species.id === perchedId) { pet.bubble.hidden = true; continue; }
       finishCue(pet, now);
       const scale = pet.species.behavior.spriteScale;
       const before = petPosition(pet);
       const previousState = pet.state.getState();
-      if (pet.airborne) simulateFlight(pet, now, delta);
-      else if (pet.chasing && held?.pet !== pet) {
+      if (!pet.paused && rightPress?.pet !== pet && !fileDrag && pet.chasing && held?.pet !== pet) {
         followCursor(pet, delta);
-      } else if (playWithToy(pet, now, delta)) { /* Toy pose drives position while active. */ }
-      else if (held?.pet !== pet && !pet.cue && now >= pet.speakingUntil) {
-        const size = PET_SIZE;
+      } else if (!pet.paused && rightPress?.pet !== pet && !fileDrag && playWithToy(pet, now, delta)) { /* Toy pose drives position while active. */ }
+      else if (!pet.paused && !fileDrag && held?.pet !== pet && !pet.cue && now >= pet.speakingUntil) {
+        const size = petSize;
         pet.behavior.update(delta, { x: 0, y: 0, width: Math.max(bounds.width, size), height: bounds.height }, size);
         cueForMovement(pet, now, petPosition(pet), previousState);
       }
@@ -974,16 +838,16 @@ async function main(): Promise<void> {
       const frame = pet.animation.getCurrentFrameRect(pet.facing);
       const pose = pet.cue && poseFor(pet.cue, now, pet.species);
       const leftSheet = pet.facing >= 5 ? def.leftSheet : undefined;
-      const mirror = !leftSheet && (def.mirrorWhen === 'left' ? pet.facing >= 5 : def.mirrorWhen === 'right' && pet.cue?.side === 1);
+      const mirror = !leftSheet && (def.mirrorWhen === 'always' || (def.mirrorWhen === 'left' ? pet.facing >= 5 : def.mirrorWhen === 'right' && pet.cue?.side === 1));
       const view = leftSheet ? { ...def, sheet: leftSheet } : def;
       const pos = after;
       if (frame) renderer.render(view, frame, pos, scale,
-        held?.pet === pet && held.dragging ? held.offset : undefined, pose, PET_SIZE, mirror);
+        undefined, pose, petSize, mirror);
       if (pet.cue?.key === 'fireBreath' && pet.firePending) {
         const mouth = pet.species.behavior.fireMouth ?? { x: .74, y: .42, frame: 1 };
         if (pet.animation.currentFrameIndex >= mouth.frame) {
           const side = pet.cue.side;
-          const size = PET_SIZE;
+          const size = petSize;
           effects.burst('fire', {
             x: pos.x + size * (side < 0 ? 1 - mouth.x : mouth.x),
             y: pos.y + size * mouth.y,
@@ -992,13 +856,13 @@ async function main(): Promise<void> {
         }
       }
       pet.bubble.hidden = activeBriefing?.pet === pet || resting(pet) || now >= pet.until;
-      const head = frame && pose ? renderer.getPoseBounds(def, frame, pos, scale, pose, PET_SIZE).y :
+      const head = frame && pose ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize).y :
         frame && def.pixelArt ? renderer.getPaintBounds(def, frame, pos, scale).y : pos.y;
       if (activeBriefing?.pet === pet) {
-        positionSpeech(briefingCard, pos.x + PET_SIZE / 2, head, pos.y + PET_SIZE, bounds);
+        positionSpeech(briefingCard, pos.x + petSize / 2, head, pos.y + petSize, bounds);
         briefingBounds = briefingCard.getBoundingClientRect();
       }
-      if (!pet.bubble.hidden) positionSpeech(pet.bubble, pos.x + PET_SIZE / 2, head, pos.y + PET_SIZE, bounds);
+      if (!pet.bubble.hidden) positionSpeech(pet.bubble, pos.x + petSize / 2, head, pos.y + petSize, bounds);
     }
     renderToy(delta);
     effects.draw(now);

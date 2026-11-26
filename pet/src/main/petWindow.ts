@@ -8,6 +8,12 @@ const RENDERER_HTML_PATH = path.join(__dirname, '../renderer/index.html');
 export class PetWindowManager {
   private window: BrowserWindow | null = null;
 
+  private macWindow?: { pin(handle: Buffer): void; fileDragActive(): boolean };
+
+  fileDragActive(): boolean | undefined {
+    return this.macWindow?.fileDragActive();
+  }
+
   create(show: boolean): BrowserWindow {
     const workArea = getHomeWorkArea();
     const displayId = screen.getDisplayMatching(workArea).id;
@@ -23,6 +29,9 @@ export class PetWindowManager {
       alwaysOnTop: true,
       skipTaskbar: true,
       resizable: false,
+      movable: false,
+      fullscreenable: false,
+      ...(process.platform === 'darwin' ? { type: 'panel' } : {}),
       hasShadow: false,
       focusable: true,
       show: false,
@@ -38,7 +47,12 @@ export class PetWindowManager {
     window.setIgnoreMouseEvents(true, { forward: true });
     const onDisplayChange = () => {
       const display = screen.getAllDisplays().find((item) => item.id === displayId) ?? screen.getPrimaryDisplay();
-      if (!window.isDestroyed()) window.setBounds(display.workArea);
+      if (window.isDestroyed()) return;
+      const bounds = window.getBounds();
+      const area = display.workArea;
+      if (bounds.x !== area.x || bounds.y !== area.y || bounds.width !== area.width || bounds.height !== area.height) {
+        window.setBounds(area, false);
+      }
     };
     screen.on('display-metrics-changed', onDisplayChange);
     screen.on('display-removed', onDisplayChange);
@@ -48,7 +62,11 @@ export class PetWindowManager {
     });
 
     if (process.platform === 'darwin') {
-      window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+      window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
+      const native = require(path.join(__dirname, 'stationary.node'));
+      native.pin(window.getNativeWindowHandle());
+      this.macWindow = native;
+      window.on('moved', onDisplayChange);
     }
 
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

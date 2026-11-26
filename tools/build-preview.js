@@ -19,7 +19,7 @@ stage = stage.slice(0, stage.indexOf('<div class="demo-bg"')) + stage.slice(stag
 // 테마: src/themes/themes.js 다음에 src/themes/<이름>/theme.js·theme.css 를 모두 넣는다
 const THEME_DIR = path.join(ROOT, 'src', 'themes');
 const themeIds = fs.readdirSync(THEME_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
-const scripts = ['parse.js', 'characters.js', 'themes/themes.js', ...themeIds.filter((id) => fs.existsSync(path.join(THEME_DIR, id, 'theme.js'))).map((id) => `themes/${id}/theme.js`), 'cutout.js', 'basic-note.js', 'app.js'];
+const scripts = ['parse.js', 'characters.js', 'themes/themes.js', ...themeIds.filter((id) => fs.existsSync(path.join(THEME_DIR, id, 'theme.js'))).map((id) => `themes/${id}/theme.js`), 'cutout.js', 'drop-content.js', 'basic-note.js', 'app.js'];
 // 테마의 로컬 글꼴과 이미지를 한 파일짜리 미리보기에 포함한다.
 const themeAssetTypes = { woff2: 'font/woff2', png: 'image/png', svg: 'image/svg+xml' };
 const themeCss = themeIds.filter((id) => fs.existsSync(path.join(THEME_DIR, id, 'theme.css'))).map((id) =>
@@ -27,7 +27,8 @@ const themeCss = themeIds.filter((id) => fs.existsSync(path.join(THEME_DIR, id, 
     const asset = fs.readFileSync(path.join(THEME_DIR, id, relativeFile)).toString('base64');
     return `url('data:${themeAssetTypes[extension]};base64,${asset}')`;
   })).join('\n');
-const designSystem = R('design-system.css');
+const designSystem = R('design-system.css').replace(/url\('perched\/([^']+)'\)/g, (_, file) =>
+  "url('data:image/png;base64," + fs.readFileSync(path.join(ROOT, 'src', 'perched', file)).toString('base64') + "')");
 for (const f of scripts) if (/<\/script/i.test(R(f))) throw new Error('</script> inside ' + f);
 
 const ICON = {
@@ -144,7 +145,7 @@ const SHIM = `
     summarize: async function(p){
       var s = await pSample; if (!s) return {ok:false, reason:'nokey'};
       var list = (p.notes || []).slice(0, 60).map(function(n, i){ return (i+1) + '. [' + n.section + '] ' + n.keyword + (n.title ? ' / ' + n.title : '') + '\\n' + String(n.text || '').slice(0, 500) + (n.events && n.events.length ? '\\n일정: ' + n.events.join('; ') : ''); }).join('\\n\\n');
-      var q = '너는 사용자의 메모 비서야. 아래 메모 전체를 한눈에 볼 수 있게 짧게 요약해. 첫 줄은 한 문장 총평. 그다음 줄마다 "- "로 시작하는 항목 3~7개: 급한 일과 마감을 먼저, 각 줄 앞에 [섹션 이름]. 날짜는 "11월 26일(목) 12:00"처럼 구체적으로. 메모에 없는 내용은 쓰지 마. 마크다운 굵게·제목은 쓰지 마.\\n현재 시각: ' + nowText() + '\\n\\n' + list;
+      var q = (p.voice ? '총평과 각 항목의 문장 끝까지 이 캐릭터 말투로 브리핑해. ' + p.voice + ' ' : '') + '너는 사용자의 메모 비서야. 아래 메모 전체를 한눈에 볼 수 있게 짧게 요약해. 첫 줄은 한 문장 총평. 그다음 줄마다 "- "로 시작하는 항목 3~7개: 급한 일과 마감을 먼저, 각 줄 앞에 [섹션 이름]. 날짜는 "11월 26일(목) 12:00"처럼 구체적으로. 메모에 없는 내용은 쓰지 마. 마크다운 굵게·제목은 쓰지 마.\\n현재 시각: ' + nowText() + '\\n\\n' + list;
       try { var r = await s(q, { modelTier:'quick', cache:false }); return {ok:true, text:r.text}; }
       catch(e){ return {ok:false, reason:'error', error: ERR[e && e.code] || 'Claude가 응답하지 않았어요.'}; }
     },
@@ -269,11 +270,11 @@ const page = `<title>귤메모 미리보기</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
 <style>
 ${R('styles.css')}
 ${designSystem}
 ${themeCss}
+${R("speech.css")}
 ${CSS}
 </style>
 ${DESKTOP}

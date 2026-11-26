@@ -27,7 +27,7 @@ export interface SpeciesAnimationDef {
   bottomInset?: number;
   pixelArt?: boolean;
   displaySize?: number;
-  mirrorWhen?: 'left' | 'right';
+  mirrorWhen?: 'left' | 'right' | 'always';
   /** Transparent horizontal margins of a static wall pose, in source pixels. */
   wallInsets?: { left: number; right: number };
   authoredGrip?: boolean;
@@ -84,7 +84,10 @@ export interface SpeciesConfig {
   fishingToy?: { handle: string; fish: string };
   companions?: SpeciesConfig[];
   chatter?: ChatterConfig;
-  dialogue?: Pick<ChatterConfig, 'solo' | 'dialogues'>;
+  dialogue?: Pick<ChatterConfig, 'solo' | 'dialogues'> & {
+    reply?: string;
+    reactions?: Partial<Record<'grab' | 'bump' | 'landing' | 'playful', string[]>>;
+  };
   id: string;
   displayName: string;
   version: string;

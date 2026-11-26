@@ -17,5 +17,9 @@
   }
 
   const charName = (state) => (state.settings.petName || '').trim() || character(state.settings.character).name;
-  root.Chars = { CHARS, ORDER, defaultId, character, charHTML, charName };
+  function weatherDetails(w) {
+    const summary = w.tomorrow ? w.forecast : w.temperature + " · " + w.current;
+    return w.place + (w.tomorrow ? " 내일 " : " 지금 ") + summary + " · " + w.range + (w.probability == null ? "" : " · 강수 확률 " + w.probability + "%") + ".";
+  }
+  root.Chars = { weatherDetails, CHARS, ORDER, defaultId, character, charHTML, charName };
 })(typeof self !== 'undefined' ? self : this);

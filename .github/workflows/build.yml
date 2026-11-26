@@ -46,7 +46,7 @@ jobs:
             for ($attempt = 0; $attempt -lt 45; $attempt++) {
               if ($launcher.HasExited) { throw "Standalone app exited with code $($launcher.ExitCode)" }
               $saved = Get-Content -Raw -LiteralPath $state -ErrorAction SilentlyContinue | ConvertFrom-Json
-              if ($saved.settings.themePack -eq 'default') { $started = $true; break }
+              if ($saved.settings.character -eq 'mono-cat' -and $saved.settings.themePack -eq 'mono-sketch') { $started = $true; break }
               Start-Sleep -Seconds 1
             }
             if (!$started) { throw 'Standalone app did not finish starting' }

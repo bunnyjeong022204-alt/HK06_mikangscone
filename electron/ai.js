@@ -92,7 +92,7 @@ function describeError(e) {
 }
 
 /** 모든 메모를 한눈에 볼 수 있게 요약 (메모 모아보기의 'AI로 전체 요약') */
-async function summarizeAll(apiKey, { notes = [] }) {
+async function summarizeAll(apiKey, { notes = [], voice = "" }) {
   const client = new Anthropic({ apiKey, timeout: 90000, maxRetries: 1 });
   const list = notes.slice(0, 80).map((n, i) => `${i + 1}. [${n.section}] ${n.keyword}${n.title ? ' / ' + n.title : ''}\n${String(n.text || '').slice(0, 600)}${n.events && n.events.length ? '\n일정: ' + n.events.join('; ') : ''}`).join('\n\n');
   const res = await client.beta.messages.create({
@@ -101,7 +101,7 @@ async function summarizeAll(apiKey, { notes = [] }) {
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
     output_config: { effort: 'low' },
-    system: '너는 사용자의 메모 비서야. 메모 전체를 한눈에 볼 수 있게 짧게 요약해. 첫 줄은 한 문장 총평. 그다음 줄마다 "- "로 시작하는 항목 3~7개: 급한 일과 마감을 먼저, 각 줄 앞에 [섹션 이름]. 날짜는 "11월 26일(목) 12:00"처럼 구체적으로. 메모에 없는 내용은 쓰지 마. 마크다운 굵게·제목은 쓰지 마.',
+    system: '너는 사용자의 메모 비서야. 메모 전체를 한눈에 볼 수 있게 짧게 요약해. 첫 줄은 한 문장 총평. 그다음 줄마다 "- "로 시작하는 항목 3~7개: 급한 일과 마감을 먼저, 각 줄 앞에 [섹션 이름]. 날짜는 "11월 26일(목) 12:00"처럼 구체적으로. 메모에 없는 내용은 쓰지 마. 마크다운 굵게·제목은 쓰지 마.' + (voice ? ' 총평과 각 항목의 문장 끝까지 이 캐릭터 말투로 브리핑해. ' + voice : ''),
     messages: [{ role: 'user', content: `현재 시각: ${nowContext()}\n\n<memos>\n${list}\n</memos>` }],
   });
   if (res.stop_reason === 'refusal') throw new Error('AI가 이 메모들은 요약하지 않았어요.');

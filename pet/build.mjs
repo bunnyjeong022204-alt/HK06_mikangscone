@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { builtinModules } from 'node:module';
@@ -25,4 +26,13 @@ for (const target of ['main', 'preload']) {
       rolldownOptions: { external },
     },
   });
+}
+
+if (process.platform === 'darwin') {
+  // Both macOS packages are built from the same dist-pet directory.
+  const headers = path.resolve(path.dirname(process.execPath), '../include/node');
+  execFileSync('xcrun', ['clang', '-bundle', '-undefined', 'dynamic_lookup',
+    '-arch', 'arm64', '-arch', 'x86_64', '-framework', 'AppKit', '-I', headers,
+    path.join(root, 'StationaryWindow.m'), '-o', path.join(output, 'main', 'stationary.node')],
+    { stdio: 'inherit' });
 }

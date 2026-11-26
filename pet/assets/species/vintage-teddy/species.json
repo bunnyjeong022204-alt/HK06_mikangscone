@@ -15,13 +15,14 @@
       "sheet": "sprites/walk.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 8,
-      "fps": 10,
+      "frameCount": 4,
+      "fps": 6,
       "loop": true,
       "mirrorWhen": "left"
     },
     "sleep": {
       "sheet": "sprites/sleep.png",
+      "mirrorWhen": "always",
       "frameWidth": 192,
       "frameHeight": 192,
       "frameCount": 8,

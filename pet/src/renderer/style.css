@@ -56,4 +56,4 @@ body {
 }
 :is(.speech, .pet-briefing)[data-below]::after { top: -6px; bottom: auto; transform: translateX(-50%) rotate(225deg); }
 .pet-briefing strong { font-size: 11px; }
-.pet-briefing span { margin-top: 4px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: pre-line; }
+.pet-briefing span { margin-top: 4px; display: block; white-space: pre-line; }

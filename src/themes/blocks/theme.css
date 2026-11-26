@@ -30,7 +30,7 @@
 }
 
 [data-theme-pack="blocks"] .demo-bg {
-  background: radial-gradient(circle, #64853a42 1.3px, transparent 1.5px) 0 0 / 17px 17px,
+  background: radial-gradient(circle, #64853a42 1.3px, transparent 1.5px) 0 0 / 32px 32px,
     linear-gradient(135deg, #e8f3c7, #c6df9a);
 }
 
@@ -63,14 +63,15 @@
 [data-theme-pack="blocks"] .upcoming-day::before {
   content: '';
   position: absolute;
-  inset: 0 5px auto;
+  inset: -3px 5px auto;
   width: auto;
   height: 11px;
   margin: 0;
   border-radius: 0;
   background-color: transparent;
   background-image: var(--brick-studs);
-  background-size: 17px 11px;
+  max-width: 146px;
+  background-size: 36px 11px;
   background-repeat: round no-repeat;
   box-shadow: none;
   pointer-events: none;
@@ -104,7 +105,7 @@
 }
 [data-theme-pack="blocks"] .overview-card::before {
   inset-inline: 9px;
-  top: 1px;
+  top: -3px;
 }
 [data-theme-pack="blocks"] .overview-card.overview-assistant {
   --brick: #94cf4d;

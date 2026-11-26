@@ -48,12 +48,14 @@ function createOverlay() {
     transparent: !DEMO, backgroundColor: DEMO ? '#cdd9e6' : '#00000000',
     frame: false, resizable: false, movable: false, minimizable: false, maximizable: false,
     fullscreenable: false, skipTaskbar: true, hasShadow: false, alwaysOnTop: true,
+    ...(IS_MAC ? { type: 'panel' } : {}),
     show: false, title: 'Mikang Memo',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
   });
   if (IS_MAC) {
     win.setAlwaysOnTop(true, 'floating');
-    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
+    require('../dist-pet/main/stationary.node').pin(win.getNativeWindowHandle());
   } else {
     win.setAlwaysOnTop(true, 'pop-up-menu');
   }
@@ -124,9 +126,28 @@ function buildTrayMenu() {
   ]);
   tray.setContextMenu(menu);
 }
+async function openDroppedMacPhotos(paths) {
+  const fs = require('node:fs/promises');
+  const photos = [];
+  let remaining = 60 * 1024 * 1024;
+  for (const file of paths) {
+    if (!/\.(jpe?g|jfif|pjpeg|pjp|png|apng|gif|webp|bmp|dib|svg|avif|heic|heif|ico|cur|tiff?)$/i.test(file)) continue;
+    if (photos.length === 6) { send('pet-photo-error', '사진은 메모 하나에 6장까지 담을 수 있어요.'); break; }
+    try {
+      const stat = await fs.stat(file);
+      if (!stat.isFile()) continue;
+      if (stat.size > remaining) { send('pet-photo-error', '한 번에 60MB 이하의 사진을 놓아 주세요.'); continue; }
+      const bytes = await fs.readFile(file);
+      remaining -= bytes.byteLength;
+      photos.push({ name: path.basename(file), type: '', bytes });
+    } catch { send('pet-photo-error', '사진 파일을 읽을 수 없어요.'); }
+  }
+  if (photos.length) send('pet-photos', photos);
+}
 function createTray() {
   tray = new Tray(trayIcon());
-  tray.setToolTip('Mikang Memo');
+  tray.setToolTip(IS_MAC ? 'Mikang Memo · 사진을 놓아 메모 만들기' : 'Mikang Memo');
+  if (IS_MAC) tray.on('drop-files', (_event, files) => { void openDroppedMacPhotos(files); });
   buildTrayMenu();
   if (IS_WIN) tray.on('click', () => send('cmd', 'summon'));
 }
@@ -156,10 +177,10 @@ ipcMain.handle('memo-pet:controls', async (event, action, id) => {
   }
   return petControls.state();
 });
-ipcMain.handle('memo-pet:schedule-speech', (event, text) => {
+ipcMain.handle('memo-pet:schedule-speech', (event, text, id) => {
   if (event.sender !== win?.webContents || typeof text !== 'string') return false;
   const line = text.trim().slice(0, 160);
-  return line ? (petControls?.speakSchedule(line) ?? false) : false;
+  return line ? (petControls?.speakSchedule(line, id) ?? false) : false;
 });
 ipcMain.on('memo-pet:show-briefing', (event, id, text) => {
   if (event.sender === win?.webContents && typeof id === 'string' && typeof text === 'string') {
@@ -167,9 +188,13 @@ ipcMain.on('memo-pet:show-briefing', (event, id, text) => {
   }
 });
 ipcMain.on('app:openData', () => shell.openPath(store.dir()));
+ipcMain.on('pet:perch', (event, id) => {
+  if (event.sender === win?.webContents && (id === null || typeof id === 'string')) petControls?.perch(id);
+});
 ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('settings:apply', (event, s) => {
-  if (!s) return;
+  if (!s || event.sender !== win?.webContents) return;
+  if (s.petSize !== undefined) petControls?.setSize(s.petSize);
   if (event.sender === win?.webContents && typeof s.proPreview === 'boolean') {
     proPreview = (!app.isPackaged || DEMO) && s.proPreview;
   }
@@ -191,6 +216,23 @@ ipcMain.handle('keys:status', () => store.keyStatus());
 ipcMain.handle('keys:set', (_e, name, value) => { if (name === 'anthropic') store.setKey(name, value); return store.keyStatus(); });
 
 // 아이폰 HEIC 사진 → JPEG (화면 쪽 보안 규칙을 느슨하게 하지 않도록 메인 프로세스에서 변환)
+ipcMain.handle('image:dropped-url', async (event, source) => {
+  if (event.sender !== win?.webContents) throw new Error('Unknown drop target');
+  const url = new URL(source);
+  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid image URL');
+  const response = await fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(15000) });
+  const type = response.headers.get('content-type')?.split(';')[0] || '';
+  if (!response.ok || !type.startsWith('image/')) { await response.body?.cancel(); throw new Error('Image unavailable'); }
+  const limit = 60 * 1024 * 1024;
+  let size = 0;
+  const chunks = [];
+  for await (const chunk of response.body) {
+    size += chunk.length;
+    if (size > limit) throw new Error('Image too large');
+    chunks.push(chunk);
+  }
+  return { bytes: Buffer.concat(chunks, size), type };
+});
 ipcMain.handle('image:heic', async (_e, buf) => {
   const convert = require('heic-convert');
   const out = await convert({ buffer: Buffer.from(buf), format: 'JPEG', quality: 0.85 });
@@ -248,7 +290,7 @@ app.whenReady().then(() => {
     send('cmd', 'pet-bookmarks', { ...anchor, x: anchor.x - origin.x, y: anchor.y - origin.y });
   }, (id) => send('pet-menu-selected', id),
   (id) => send('pet-briefing-request', id), (photos) => send('pet-photos', photos),
-  (message) => send('pet-photo-error', message), () => send('cmd', 'board'));
+  (message) => send('pet-photo-error', message), () => send('cmd', 'board'), (content) => send('pet-content', content));
   createOverlay();
   createTray();
   registerShortcuts();
