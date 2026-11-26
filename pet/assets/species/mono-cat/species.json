@@ -15,7 +15,7 @@
       "sheet": "sprites/walk-right.png",
       "frameWidth": 192,
       "frameHeight": 192,
-      "frameCount": 10,
+      "frameCount": 8,
       "fps": 12,
       "loop": true,
       "mirrorWhen": "left"
@@ -169,7 +169,7 @@
       "right": 20
     },
     "sideWalkDepth": 0.16,
-    "walkSpeedPxPerSec": 64,
+    "walkSpeedPxPerSec": 24,
     "idleMinMs": 1600,
     "idleMaxMs": 3300,
     "walkMinMs": 3800,
