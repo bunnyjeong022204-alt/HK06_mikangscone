@@ -34,38 +34,13 @@ interface Companion {
   nextLookAt: number;
   pointerDistance: number;
   reactionUntil: number;
-  sideWalk?: SideWalk;
   chasing?: boolean;
   nextBurstAt?: number;
   firePending?: boolean;
   toyPlay?: { origin: Vec2; position: Vec2; strike: Vec2; aim: Vec2; side: -1 | 1; hit: boolean };
 }
 
-interface SideWalk {
-  side: -1 | 1;
-  elapsed: number;
-  legMs: number;
-}
-
-const SIDE_WALK_HEIGHT_RATIO = 0.45;
 const BRIEFING_HOLD_MS = 450;
-
-function sideWalkProgress(walk: SideWalk) {
-  const phase = walk.elapsed / walk.legMs;
-  const progress = Math.min(phase, 2 - phase);
-  return progress * progress * (3 - 2 * progress);
-}
-
-function sideWalkScale(pet: Companion, progress: number) {
-  return 1 - (pet.species.behavior.sideWalkDepth ?? 0) * progress;
-}
-
-function currentPose(pet: Companion, now: number) {
-  if (pet.cue) return poseFor(pet.cue, now, pet.species);
-  if (!pet.sideWalk) return undefined;
-  const scale = sideWalkScale(pet, sideWalkProgress(pet.sideWalk));
-  return scale === 1 ? undefined : { tilt: 0, scaleX: scale, scaleY: scale, lift: 0, wall: pet.sideWalk.side };
-}
 const HOVER_EXIT_PADDING = 5;
 
 const REACTION_LINES = {
@@ -104,19 +79,7 @@ async function main(): Promise<void> {
     const activePosition = pet.toyPlay?.position ?? pet.airborne?.position;
     if (activePosition) return activePosition;
     const size = petSize(pet);
-    const floor = Math.max(0, bounds.height - size);
-    const walk = pet.sideWalk;
-    if (!walk) return { x: floorX(pet.behavior.getPosition().x, size), y: floor };
-    const progress = sideWalkProgress(walk);
-    const climb = floor * SIDE_WALK_HEIGHT_RATIO * progress;
-    const corner = Math.min(1, climb / 30);
-    const sideInsets = pet.species.behavior.sideWalkInsets;
-    const margin = (walk.side < 0 ? sideInsets?.left : sideInsets?.right) ?? 0;
-    const right = Math.max(0, bounds.width - size);
-    const offset = right > 0 && !pet.cue
-      ? Math.max(0, margin * pet.species.behavior.spriteScale * sideWalkScale(pet, progress) - 2) *
-        corner * corner * (3 - 2 * corner) : 0;
-    return { x: walk.side < 0 ? -offset : right + offset, y: floor - climb };
+    return { x: floorX(pet.behavior.getPosition().x, size), y: Math.max(0, bounds.height - size) };
   };
   let pets: Companion[] = [];
   let sceneReady = false;
@@ -218,7 +181,7 @@ async function main(): Promise<void> {
     pet.bubble.hidden = false;
   }
   const canChat = (pet: Companion, now: number) =>
-    !resting(pet) && !pet.airborne && !pet.cue && !pet.sideWalk && held?.pet !== pet && now >= pet.reactionUntil;
+    !resting(pet) && !pet.airborne && !pet.cue && held?.pet !== pet && now >= pet.reactionUntil;
   let pendingSchedule: { text: string; expires: number } | null = null;
   window.petAPI.onScheduleSpeech((text) => {
     pendingSchedule = { text, expires: performance.now() + 90_000 };
@@ -262,8 +225,6 @@ async function main(): Promise<void> {
     reply = null; held = null; toyProp = undefined; renderer.clearCache(); chatter = loaded.chatter;
     const dismissed = new Set(loaded.dismissedIds);
     pets = [loaded, ...(loaded.companions ?? [])].filter(({ id }) => !dismissed.has(id)).map((species, index) => {
-      renderer.preload(species.motions?.backWalk);
-      renderer.preload(species.motions?.frontWalk);
       renderer.preload(species.motions?.fireBreath);
       const state = new PetStateMachine();
       const animation = new AnimationController();
@@ -306,7 +267,7 @@ async function main(): Promise<void> {
     const def = pet.clip;
     if (!def) return false;
     const frame = pet.animation.getCurrentFrameRect(pet.facing);
-    const pose = currentPose(pet, previous);
+    const pose = pet.cue && poseFor(pet.cue, previous, pet.species);
     const pos = petPosition(pet);
     const scale = pet.species.behavior.spriteScale;
     const box = pose && frame ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize(pet)) : renderer.getSpriteBounds(def, pos, scale);
@@ -317,7 +278,6 @@ async function main(): Promise<void> {
   });
   function beginDrag(grab: NonNullable<typeof held>) {
     grab.dragging = true;
-    grab.pet.sideWalk = undefined;
     grab.pet.cue = undefined;
     grab.pet.state.transition('idle');
     grab.pet.behavior.interruptForDrag();
@@ -415,7 +375,7 @@ async function main(): Promise<void> {
       if (pet.throwSpeed > 0) cue(pet, 'fly', performance.now(), pet.impactSide, pet.throwSpeed / 1300);
     }
     else if (event.type === 'pointerup') {
-      if (pet.sideWalk || resting(pet) || pet.chasing || (pet.nextBurstAt ?? 0) > performance.now()) return;
+      if (resting(pet) || pet.chasing || (pet.nextBurstAt ?? 0) > performance.now()) return;
       pet.cue = undefined;
       pet.state.transition('idle'); pet.behavior.react();
       if (chatter?.enabled) talkToUser(pet, performance.now());
@@ -451,10 +411,8 @@ async function main(): Promise<void> {
     pet.nextBurstAt = now + 1000;
     pet.cue = undefined;
     const breath = action === 'fire' ? pet.species.motions?.fireBreath : undefined;
-    if (!pet.sideWalk) {
-      pet.state.transition('idle');
-      if (!breath) pet.behavior.react();
-    }
+    pet.state.transition('idle');
+    if (!breath) pet.behavior.react();
     if (breath) {
       pet.firePending = true;
       cue(pet, 'fireBreath', now, side);
@@ -512,7 +470,6 @@ async function main(): Promise<void> {
     hush(target);
     target.state.transition('idle');
     target.behavior.interruptForDrag();
-    target.sideWalk = undefined;
     target.airborne = { position, velocity: response.target };
     target.collisionPath = wall;
     target.throwSpeed = 0;
@@ -695,7 +652,7 @@ async function main(): Promise<void> {
     renderer.render(toyProp, frame, { x: toyPointer.x - size * 0.91, y: toyPointer.y - size * 0.92 }, cat.species.behavior.spriteScale);
   }
 
-  function cueForMovement(pet: Companion, now: number, after: Vec2, previousState: PetState, reachedSide: -1 | 1 | undefined) {
+  function cueForMovement(pet: Companion, now: number, after: Vec2, previousState: PetState) {
     const state = pet.state.getState();
     const personality = personalityOf(pet.species);
     const size = petSize(pet);
@@ -708,12 +665,6 @@ async function main(): Promise<void> {
     }
     if (previousState === 'sleep') {
       cue(pet, 'wake', now, side);
-      return;
-    }
-    if (reachedSide && state === 'walk' && onFloor && !toyEnabled &&
-        pet.species.motions?.frontWalk && pet.species.motions.backWalk && after.y >= 32) {
-      const speed = Math.max(25, pet.species.behavior.walkSpeedPxPerSec);
-      pet.sideWalk = { side: reachedSide, elapsed: 0, legMs: after.y * SIDE_WALK_HEIGHT_RATIO / speed * 1000 };
       return;
     }
     const distance = Math.hypot(pointer.x - after.x - size / 2, pointer.y - after.y - size / 2);
@@ -734,7 +685,7 @@ async function main(): Promise<void> {
 
   function encounter(now: number) {
     if (now < nextEncounter || held) return;
-    const walkers = pets.filter((pet) => !pet.cue && !pet.airborne && !pet.sideWalk &&
+    const walkers = pets.filter((pet) => !pet.cue && !pet.airborne &&
       pet.state.getState() === 'walk' && now >= pet.speakingUntil);
     for (const a of walkers) {
       if (a.facing !== 2) continue;
@@ -831,20 +782,13 @@ async function main(): Promise<void> {
       const before = petPosition(pet);
       const previousState = pet.state.getState();
       if (pet.airborne) simulateFlight(pet, now, delta);
-      else if (pet.sideWalk) {
-        const walk = pet.sideWalk;
-        if (held?.pet !== pet && !pet.cue) walk.elapsed += delta;
-        if (walk.elapsed >= walk.legMs * 2) {
-          pet.behavior.setPosition({ x: floorX(walk.side < 0 ? 0 : bounds.width, petSize(pet)), y: 0 });
-          pet.sideWalk = undefined;
-        }
-      } else if (pet.chasing && held?.pet !== pet) {
+      else if (pet.chasing && held?.pet !== pet) {
         followCursor(pet, delta);
       } else if (playWithToy(pet, now, delta)) { /* Toy pose drives position while active. */ }
       else if (held?.pet !== pet && !pet.cue && now >= pet.speakingUntil) {
         const size = petSize(pet);
-        const reachedSide = pet.behavior.update(delta, { x: 0, y: 0, width: Math.max(bounds.width, size), height: bounds.height }, size);
-        cueForMovement(pet, now, petPosition(pet), previousState, reachedSide);
+        pet.behavior.update(delta, { x: 0, y: 0, width: Math.max(bounds.width, size), height: bounds.height }, size);
+        cueForMovement(pet, now, petPosition(pet), previousState);
       }
       const after = petPosition(pet);
       const dx = after.x - before.x;
@@ -855,13 +799,9 @@ async function main(): Promise<void> {
       else if (Math.abs(dx) > Math.max(0.01, Math.abs(dy))) pet.facing = dx < 0 ? 6 : 2;
       else if (Math.abs(dy) > 0.01) pet.facing = dy < 0 ? 4 : 0;
       const state = pet.state.getState();
-      const sideMotion = pet.sideWalk && !pet.cue ?
-        pet.sideWalk.elapsed < pet.sideWalk.legMs ? 'backWalk' : 'frontWalk' : undefined;
       const sideIdle = (state === 'idle' || state === 'sit') && (pet.facing === 2 || pet.facing === 6) && pet.species.motions?.sideIdle;
-      if (sideMotion) pet.facing = sideMotion === 'backWalk' ? 4 : 0;
-      const playback = sideMotion ?? pet.cue?.key ?? (sideIdle ? 'sideIdle' : state);
-      const def = (sideMotion && pet.species.motions?.[sideMotion]) ||
-        (pet.cue ? cueAnimation(pet.species, pet.cue, pet.facing) : sideIdle || animationFor(pet.species, state));
+      const playback = pet.cue?.key ?? (sideIdle ? 'sideIdle' : state);
+      const def = pet.cue ? cueAnimation(pet.species, pet.cue, pet.facing) : sideIdle || animationFor(pet.species, state);
       if (!def) continue;
       if (pet.playbackKey !== playback) {
         pet.clip = def;
@@ -870,7 +810,7 @@ async function main(): Promise<void> {
       } else pet.animation.update(held?.pet === pet && held.dragging ? delta * 0.48 : delta);
       if (!pet.cue && pet.state.getState() === 'react' && pet.animation.isFinished()) pet.behavior.endReaction();
       const frame = pet.animation.getCurrentFrameRect(pet.facing);
-      const pose = currentPose(pet, now);
+      const pose = pet.cue && poseFor(pet.cue, now, pet.species);
       const leftSheet = pet.facing >= 5 ? def.leftSheet : undefined;
       const mirror = !leftSheet && (def.mirrorWhen === 'left' ? pet.facing >= 5 : def.mirrorWhen === 'right' && pet.cue?.side === 1);
       const view = leftSheet ? { ...def, sheet: leftSheet } : def;
