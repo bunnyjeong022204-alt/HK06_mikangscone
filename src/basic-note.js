@@ -51,9 +51,16 @@
       el.textContent = note.text;
     }
     el.classList.toggle('is-empty', !note.text.trim());
-    const toolbar = h('div', { class: 'basic-format', role: 'group', 'aria-label': '메모 서식' },
+    const toolbar = h('div', { class: 'basic-format', role: 'group', 'aria-label': '메모 서식' });
+    const toggle = h('button', { class: 'basic-format-toggle', type: 'button', 'aria-label': '서식 도구',
+      'aria-expanded': 'false', onmousedown: (e) => e.preventDefault(), onclick: () => {
+        const expanded = toolbar.toggleAttribute('data-expanded');
+        toggle.setAttribute('aria-expanded', String(expanded));
+      } }, 'Aa');
+    toolbar.append(toggle, ...
       FORMATS.map(([command, label, icon]) => h('button', {
         type: 'button',
+        'data-format': true,
         class: 'basic-format-' + command,
         'aria-label': label,
         title: label,

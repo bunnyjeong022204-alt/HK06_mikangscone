@@ -242,9 +242,13 @@ app.whenReady().then(() => {
   petControls = pet.startPet(() => {
     if (tray) buildTrayMenu();
     send('pet-changed');
-  }, () => send('cmd', 'pet-bookmarks'), (id) => send('pet-menu-selected', id),
+  }, (anchor) => {
+    if (!win) return;
+    const origin = win.getBounds();
+    send('cmd', 'pet-bookmarks', { ...anchor, x: anchor.x - origin.x, y: anchor.y - origin.y });
+  }, (id) => send('pet-menu-selected', id),
   (id) => send('pet-briefing-request', id), (photos) => send('pet-photos', photos),
-  (message) => send('pet-photo-error', message));
+  (message) => send('pet-photo-error', message), () => send('cmd', 'board'));
   createOverlay();
   createTray();
   registerShortcuts();

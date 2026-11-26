@@ -312,8 +312,22 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   --mikkang-yellow: #f8eaa5;
   --mikkang-pink: #f0c9c4;
   --mikkang-blue: #cfdfdc;
-  --mikkang-radius: 16px;
-  --mikkang-shadow: 0 8px 22px #46564935;
+  --mikkang-radius: 12px;
+  --control-radius: 8px;
+  --mikkang-shadow: 0 2px 6px #29282414;
+  --floating-shadow: 0 12px 30px #29282436;
+  --type-heading: 22px;
+  --type-dialog: 18px;
+  --type-note: 15px;
+  --type-control: 13px;
+  --type-label: 11px;
+  --type-detail: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --note-width: 340px;
+  --note-height: 420px;
   --ink: var(--mikkang-ink);
   --ink-soft: var(--mikkang-muted);
   --paper: var(--mikkang-paper);
@@ -335,6 +349,49 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   border-color: var(--mikkang-line);
   box-shadow: var(--mikkang-shadow);
 }
+.stage .bubble {
+  width: min(240px, calc(100vw - 24px));
+  padding: var(--space-3) 14px;
+  border: 1.5px solid var(--mikkang-line);
+  border-radius: 14px;
+  font-size: var(--type-control);
+}
+.stage .bubble[data-menu="true"] { width: min(280px, calc(100vw - 24px)); }
+.bubble[data-anchored]::after {
+  content: '';
+  position: absolute;
+  left: var(--tail-x);
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  border: inherit;
+  border-top: 0;
+  border-left: 0;
+  background: inherit;
+  transform: translateX(-50%) rotate(45deg);
+  pointer-events: none;
+}
+.bubble[data-below]::after { top: -6px; bottom: auto; transform: translateX(-50%) rotate(225deg); }
+.bubble:not([data-menu="true"]) .msg {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bubble .acts { grid-template-columns: 1fr; gap: var(--space-1); padding-top: var(--space-2); border-top: 1px solid var(--mikkang-line); }
+.bubble .acts button {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--control-radius);
+  color: inherit;
+  background: transparent;
+  font-size: var(--type-control);
+}
+.bubble .acts button:hover { background: var(--mikkang-sage-light); }
+.bubble .ask { gap: var(--space-1); }
+.bubble .ask input { height: 34px; border-radius: var(--control-radius); }
 
 .btn.primary,
 .seg button[aria-pressed="true"],
@@ -359,31 +416,57 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   --ti: var(--mikkang-surface);
 }
 
-.side-right .sheet.basic-note,
-.side-left .sheet.basic-note {
+.dock { gap: var(--space-1); }
+.dock .tab {
+  flex: none;
+  width: 140px;
+  min-width: 0;
+  height: 32px;
+  min-height: 0;
+  padding: 0 var(--space-3);
+  border-radius: var(--control-radius);
+  font-size: var(--type-control);
+  transform: none;
+}
+.dock .tab::before { content: none; }
+.dock .tab.sub { width: 128px; height: 28px; font-size: var(--type-detail); }
+.dock .tab .cnt { height: 16px; min-width: 16px; }
+.dock .index-stripe { width: 14px; padding: 0; }
+.dock .index-fold { color: var(--mikkang-muted); background: var(--mikkang-surface); }
+.dock .subs { gap: var(--space-1); padding-block: 0; }
+.stage.overview-open .dock { display: none; }
+
+.side-right .sheet,
+.side-left .sheet {
   top: min(84px, 10vh);
-  width: min(410px, calc(100% - 32px));
+  width: min(var(--note-width), calc(100% - 32px));
   transform: none;
 }
 
-.side-right .sheet.basic-note { right: min(150px, max(16px, calc(100vw - 426px))); }
-.side-left .sheet.basic-note { left: min(150px, max(16px, calc(100vw - 426px))); }
+.side-right .sheet { right: min(156px, max(16px, calc(100vw - var(--note-width) - 16px))); }
+.side-left .sheet { left: min(156px, max(16px, calc(100vw - var(--note-width) - 16px))); }
 
+.sheet:not(.basic-note) .card { width: 100%; height: min(var(--note-height), calc(100vh - min(84px, 10vh) - 120px)); }
+.sheet:not(.basic-note) .content { overflow: auto; }
+.sheet .bar { width: 100%; }
+.sheet .kw { font-size: var(--type-dialog); }
+.sheet .body { font-size: var(--type-note); line-height: 24px; }
+.sheet textarea.body { background-image: repeating-linear-gradient(to bottom, transparent 0 23px, var(--rule) 23px 24px); }
 
 .basic-note .card {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: min(330px, calc(100vh - 115px));
+  height: min(var(--note-height), calc(100vh - min(84px, 10vh) - 16px));
   overflow: hidden;
   border: 1px solid #dfce87;
   border-radius: 12px;
   background: #fff8d0;
   filter: none;
-  box-shadow: var(--mikkang-shadow);
+  box-shadow: var(--floating-shadow);
 }
 
-.basic-note.basic-details .card { height: min(510px, calc(100vh - 185px)); }
+.basic-note.basic-details .card { height: min(var(--note-height), calc(100vh - min(84px, 10vh) - 120px)); }
 .basic-note .backing,
 .basic-note .paper,
 .basic-note .clip,
@@ -457,7 +540,7 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   min-height: 65px;
   overflow-y: auto;
   background: none;
-  font: 15px/1.65 var(--f-ui);
+  font: var(--type-note)/1.65 var(--f-ui);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: text;
@@ -470,45 +553,81 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   pointer-events: none;
 }
 
-.basic-note .kw { font-size: 24px; }
 .chip .dday-toggle { width: auto; min-width: 34px; padding: 0 4px; font-size: 10px; white-space: nowrap; }
 .chip .dday-toggle[aria-pressed="true"] { color: var(--mikkang-action); font-weight: 700; }
 .basic-note .bar { width: 100%; margin-top: 8px; }
 .basic-note .bar .row { flex-wrap: wrap; }
 .basic-format { border-top: 1px solid #8f79421f; }
+.basic-format { flex-wrap: wrap; }
+.basic-format [data-format] { visibility: hidden; }
+.basic-format:is([data-selection], [data-expanded]) [data-format] { visibility: visible; }
+.basic-format-toggle[aria-expanded="false"] { color: var(--mikkang-muted); }
 .basic-format-bold { font-weight: 700; }
 .basic-format-italic { font-style: italic; }
 .basic-format-underline { text-decoration: underline; }
 .basic-format-strikeThrough { text-decoration: line-through; }
 
 .modal.boardwrap {
-  place-items: start end;
+  place-items: center;
   grid-template-rows: minmax(0, 1fr);
-  padding: 80px 12px 10px;
+  padding: var(--space-4);
   background: transparent;
   pointer-events: none;
 }
 
-.side-left .modal.boardwrap { justify-items: start; }
-
 .mikkang-overview {
   display: grid;
-  gap: 10px;
-  align-content: start;
-  width: min(364px, 100%);
+  gap: var(--space-4);
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(100%, clamp(880px, round(72vw, 10px), 1280px));
+  height: min(100%, clamp(600px, round(80vh, 10px), 800px));
   max-height: 100%;
-  padding: 4px 5px 12px;
-  overflow: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--mikkang-line);
+  border-radius: var(--mikkang-radius);
+  background: var(--mikkang-paper);
+  box-shadow: var(--floating-shadow);
+  color: var(--mikkang-ink);
+  overflow: hidden;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: #899d8a transparent;
   pointer-events: auto;
 }
 
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-content: start;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.overview-slot, .overview-grid > .overview-card { min-width: 0; }
+.overview-grid > .overview-card { grid-column: 1 / -1; }
+.overview-slot > .overview-card { height: 100%; }
+@media (min-width: 800px) {
+.overview-grid:has(> [data-widget-card="assistant"]:nth-last-child(4) + [data-widget-card="schedule"] + [data-widget-card="memos"] + [data-widget-card="ai"]) {
+  grid-template-rows: auto minmax(min-content, 1fr);
+  align-content: stretch;
+}
+.overview-grid:has(> [data-widget-card="assistant"]:nth-last-child(4) + [data-widget-card="schedule"] + [data-widget-card="memos"] + [data-widget-card="ai"]) > :is([data-widget-card="schedule"], [data-widget-card="memos"]) {
+  grid-row: span 2;
+}
+}
+@media (max-width: 799px) {
+  .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .overview-grid { grid-template-columns: minmax(0, 1fr); }
+  .overview-toolbar { flex-wrap: wrap; height: auto; }
+}
+
 .overview-card {
   min-width: 0;
   margin: 0;
-  padding: 14px;
+  padding: var(--space-4);
   border: 1px solid var(--mikkang-line);
   border-radius: var(--mikkang-radius);
   color: var(--mikkang-ink);
@@ -521,8 +640,18 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 5px;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--mikkang-line);
 }
+.overview-toolbar h1 { margin: 0; font-size: var(--type-heading); }
+.overview-toolbar time { margin-right: auto; font-size: var(--type-detail); color: var(--mikkang-muted); }
+.overview-toolbar #overview-search { flex: 0 1 220px; }
+.mikkang-overview .btn { border-radius: var(--control-radius); font-size: var(--type-control); }
+.overview-today { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-3) 0; }
+.overview-today > div { display: flex; flex-direction: column-reverse; gap: var(--space-1); padding: var(--space-2); border-radius: var(--control-radius); background: var(--mikkang-paper); text-align: center; }
+.overview-today dt { font-size: var(--type-label); color: var(--mikkang-muted); }
+.overview-today dd { margin: 0; font-size: var(--type-dialog); font-weight: 700; }
 
 .overview-layout-editor .overview-muted { margin-top: 0; }
 .overview-layout-editor ul { margin: 8px 0 0; padding: 0; list-style: none; }
@@ -560,8 +689,7 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   color: #21251e;
   background: #fff;
 }
-.upcoming-card .upcoming-head h2 { font: 400 29px/1 'Jua', var(--f-display); }
-.upcoming-head > span { color: #565a52; font-size: 11px; font-weight: 700; }
+.upcoming-head > span { color: var(--mikkang-muted); font-size: var(--type-label); font-weight: 700; }
 .upcoming-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin-top: 12px; }
 .upcoming-day {
   display: grid;
@@ -577,8 +705,8 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   font-family: 'Jua', var(--f-ui);
   line-height: 1;
 }
-.upcoming-day small { color: #51564c; font-size: 11px; }
-.upcoming-day strong { font-size: 16px; font-weight: 400; }
+.upcoming-day small { color: inherit; font-size: var(--type-label); }
+.upcoming-day strong { font-size: var(--type-note); font-weight: 400; }
 .upcoming-day[aria-pressed="true"] { background: var(--upcoming-accent); box-shadow: 0 3px 6px #26312824; }
 .upcoming-day[aria-pressed="true"] small { color: inherit; }
 .upcoming-dot { width: 4px; height: 4px; border-radius: 50%; background: #88a732; }
@@ -601,7 +729,7 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 }
 .upcoming-event-dot { width: 10px; height: 10px; border: 2px solid #aacf41; border-radius: 50%; }
 .upcoming-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.upcoming-events time { color: #565a52; }
+.upcoming-events time { color: var(--mikkang-muted); }
 .upcoming-manage { margin-top: 8px; color: var(--mikkang-muted); font-size: 11px; }
 .upcoming-manage > summary { width: max-content; cursor: pointer; }
 
@@ -616,15 +744,17 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 .overview-row h2,
 .overview-ai h2 {
   margin: 0;
-  font: 700 23px/1.2 var(--f-ui);
+  color: var(--mikkang-muted);
+  font: 700 var(--type-label)/1.2 var(--f-ui);
 }
 
 .overview-assistant h2 { flex: 1; }
 .overview-avatar {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
+  padding: 0;
   border: 1px solid #b2c6b1;
   border-radius: 50%;
   overflow: hidden;
@@ -648,7 +778,7 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   width: 32px;
   height: 32px;
   border: 1px solid var(--mikkang-line);
-  border-radius: 50%;
+  border-radius: var(--control-radius);
   background: var(--mikkang-surface);
 }
 
@@ -669,6 +799,7 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   padding-block: 4px;
 }
 .overview-quick input { min-width: 0; flex: 1; padding: 6px 0; border: 0; background: transparent; }
+.overview-quick-section { min-width: 0; max-width: 40%; border: 1px solid var(--mikkang-line); border-radius: var(--control-radius); padding: 4px; color: inherit; background: var(--mikkang-surface); font-size: var(--type-detail); }
 .overview-quick .overview-icon { color: white; background: var(--mikkang-action); border-color: transparent; }
 
 .overview-link {
@@ -820,8 +951,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   --mikkang-pink: #f9a3db;
   --mikkang-blue: #81cff8;
   --block-orange: #ff963e;
-  --mikkang-radius: 5px;
-  --mikkang-shadow: 0 4px 0 #77705b35, 0 10px 18px #26271822;
   --section-green: #a3dc57;
   --section-cream: #cfbcff;
   --section-orange: var(--block-orange);
@@ -842,31 +971,23 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
     radial-gradient(ellipse 5.2px 3.6px at 50% 5.7px, var(--brick-edge) 92%, transparent);
 }
 
-[data-theme-pack="blocks"] .dock { gap: 7px; padding: 4px 5px 10px; }
 [data-theme-pack="blocks"] .dock .tab {
   --brick: var(--tc);
-  min-height: 52px;
-  padding-block: 17px 10px;
-  padding-inline: 13px;
+  padding-block-start: 6px;
   border: 1px solid var(--brick-edge);
-  border-radius: var(--mikkang-radius);
-  background: linear-gradient(var(--brick-top) 0 11px, var(--brick-edge) 11px 12px, var(--brick) 12px);
+  border-radius: var(--control-radius);
+  background: linear-gradient(var(--brick-top) 0 7px, var(--brick-edge) 7px 8px, var(--brick) 8px);
   box-shadow: inset 0 -5px var(--brick-edge), 0 3px 5px #15100e4f;
 }
-[data-theme-pack="blocks"] .side-right .dock .tab { transform: translateX(4px); }
-[data-theme-pack="blocks"] .side-left .dock .tab { transform: translateX(-4px); }
 [data-theme-pack="blocks"] .dock .tab:is(:hover, :focus-visible) { transform: translateX(0); }
-[data-theme-pack="blocks"] .side-right .dock .tab:is(.exp, .open) { transform: translateX(-4px); }
-[data-theme-pack="blocks"] .side-left .dock .tab:is(.exp, .open) { transform: translateX(4px); }
 [data-theme-pack="blocks"] .dock .tab.add { --brick: #fff2ce; }
 [data-theme-pack="blocks"] .dock .tab.overview-tab { --brick: #367c27; }
-[data-theme-pack="blocks"] .dock .tab.sub { min-height: 42px; padding-block: 15px 8px; }
 [data-theme-pack="blocks"] .tab.sec .cnt {
   border-radius: 3px;
   background: color-mix(in srgb, var(--brick) 50%, white);
   box-shadow: inset 0 -2px #29251d24;
 }
-[data-theme-pack="blocks"] .dock .tab::before,
+[data-theme-pack="blocks"] .dock .tab:not(.index-stripe)::before,
 [data-theme-pack="blocks"] .overview-card::before,
 [data-theme-pack="blocks"] .upcoming-day::before {
   content: '';
@@ -889,7 +1010,7 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 }
 [data-theme-pack="blocks"] :is(input, select, textarea) { font-family: var(--f-ui); }
 [data-theme-pack="blocks"] :is(.btn, .mikkang-overview .bfilter button) {
-  border-radius: 5px;
+  border-radius: var(--control-radius);
 }
 [data-theme-pack="blocks"] .basic-note .card {
   border-color: #d19b28;
@@ -901,16 +1022,14 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   background: linear-gradient(#ffe28b 0 3px, var(--mikkang-yellow) 3px);
   box-shadow: inset 0 -3px #97670f32;
 }
-[data-theme-pack="blocks"] .mikkang-overview { gap: 13px; padding-inline: 6px; }
 [data-theme-pack="blocks"] .overview-card {
   --brick: var(--mikkang-yellow);
   --brick-face: #fff8e5;
   position: relative;
-  padding-top: 24px;
   border-color: var(--brick-edge);
   border-radius: var(--mikkang-radius);
   background: linear-gradient(var(--brick) 0 13px, var(--brick-edge) 13px 14px, var(--brick-face) 14px);
-  box-shadow: 0 5px var(--brick-edge), 0 8px 9px #17170e5c;
+  box-shadow: var(--mikkang-shadow);
 }
 [data-theme-pack="blocks"] .overview-card::before {
   inset-inline: 9px;
@@ -937,12 +1056,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 [data-theme-pack="blocks"] :is(.overview-brief, .overview-quick, .overview-library-tools input) {
   border: 1px solid #85806456;
   box-shadow: inset 0 2px 0 #50461914;
-}
-[data-theme-pack="blocks"] :is(.overview-row h2, .overview-ai h2) {
-  font: 700 24px/1.2 var(--f-display);
-}
-[data-theme-pack="blocks"] .upcoming-card .upcoming-head h2 {
-  font: 700 24px/1.1 var(--f-display);
 }
 [data-theme-pack="blocks"] .upcoming-day {
   --brick: var(--upcoming-day-bg);
@@ -1016,7 +1129,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   --f-ui: 'Mono Pretendard', 'Malgun Gothic', sans-serif;
   --f-display: var(--f-ui);
   --f-hand: var(--f-ui);
-  --mikkang-radius: 6px;
   --mikkang-ink: #1c1c1c;
   --mikkang-muted: #6b6b6b;
   --mikkang-paper: #f7f6f2;
@@ -1029,7 +1141,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   --mikkang-yellow: #f3e58a;
   --mikkang-pink: #e6e4dd;
   --mikkang-blue: #eae9e4;
-  --mikkang-shadow: 0 1px 3px #1c1c1c1f;
   --mono-ruling: #e4e2da;
   --glass: var(--mikkang-surface);
   --cherry: #6b6241;
@@ -1048,7 +1159,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   --mikkang-yellow: #7a6c1f;
   --mikkang-pink: #302f2b;
   --mikkang-blue: #31302d;
-  --mikkang-shadow: 0 1px 3px #0008;
   --mono-ruling: #33322f;
   --cherry: #f3e58a;
 }
@@ -1067,7 +1177,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   border: 1px solid var(--mikkang-line);
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) :is(.overview-assistant, .overview-ai) { background: var(--mikkang-sage-light); }
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .overview-card { border-radius: 7px; }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .theme-card[aria-pressed="true"] { border-color: var(--mikkang-action); }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .upcoming-card {
   --upcoming-accent: var(--mikkang-yellow);
@@ -1075,36 +1184,15 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card {
   container-type: size;
-  background: var(--mono-paper-art) center / contain no-repeat;
+  background: var(--mono-paper-art) center / 100% 100% no-repeat;
   border: 0;
   border-radius: 0;
   color: var(--mikkang-ink);
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet {
-  /* Match the centered 370 × 470 artwork, including its transparent margins. */
-  --mono-art-width: min(100cqw, calc(100cqh * 370 / 470));
-  --mono-art-height: min(100cqh, calc(100cqw * 470 / 370));
-  --mono-inset-inline: calc((100cqw - var(--mono-art-width)) / 2 + var(--mono-art-width) * .11);
-  --mono-inset-top: calc((100cqh - var(--mono-art-height)) / 2 + var(--mono-art-height) * .18);
-  --mono-inset-bottom: calc((100cqh - var(--mono-art-height)) / 2 + var(--mono-art-height) * .12);
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet.basic-note {
-  --mono-note-height: max(180px, calc(100vh - min(84px, 10vh) - 16px));
-  --mono-note-width: min(480px, calc(100% - 32px), calc(var(--mono-note-height) * 370 / 470));
-  width: var(--mono-note-width);
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet.basic-note.basic-details {
-  --mono-note-height: max(180px, calc(100vh - min(84px, 10vh) - 156px));
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .side-right .sheet.basic-note {
-  right: min(150px, max(16px, calc(100% - var(--mono-note-width) - 16px)));
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .side-left .sheet.basic-note {
-  left: min(150px, max(16px, calc(100% - var(--mono-note-width) - 16px)));
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .basic-note .card {
-  height: auto;
-  aspect-ratio: 370 / 470;
+  --mono-inset-inline: 11cqw;
+  --mono-inset-top: 18cqh;
+  --mono-inset-bottom: 12cqh;
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card :is(.paper, .backing, .clip, .orn) { display: none; }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet:not(.basic-note) .card .content {
@@ -1141,10 +1229,10 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   background: linear-gradient(transparent 62%, var(--mikkang-yellow) 62% 95%, transparent 95%);
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card .body {
-  background-image: repeating-linear-gradient(to bottom, transparent 0 27px, var(--mono-ruling) 27px 28px);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 23px, var(--mono-ruling) 23px 24px);
   background-attachment: local;
   color: inherit;
-  line-height: 28px;
+  line-height: 24px;
 }
 :root[data-theme-pack="mono-sketch-dark"] .card :is(.basic-note-caption, .kw, .body, .basic-icon, .basic-format button, .basic-photo) {
   color: #f8f7f3;
@@ -1203,8 +1291,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   --mikkang-yellow: #fbf1cf;
   --mikkang-pink: #f9dde3;
   --mikkang-blue: #dcebf8;
-  --mikkang-radius: 20px;
-  --mikkang-shadow: 0 10px 26px #7a68b522;
   --cherry: #e07a8c;
   --glass: #fffdfdf2;
 }
@@ -1220,7 +1306,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 :root[data-theme-pack="pastel"] .overview-assistant { background: linear-gradient(160deg, #fde6ea, #efe9fb); }
 :root[data-theme-pack="pastel"] .overview-avatar { border-color: #f3b4bc; background: #fff6f7; }
 :root[data-theme-pack="pastel"] .overview-row h2,
-:root[data-theme-pack="pastel"] .overview-ai h2 { font-weight: 400; font-size: 25px; }
 :root[data-theme-pack="pastel"] .upcoming-card {
   --upcoming-accent: #f6c1cc;
   --upcoming-day-bg: #f5f1fb;
@@ -1245,7 +1330,7 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   box-shadow: 0 1px 2px #0000000d, 0 12px 24px #6c5f8a24;
 }
 :root[data-theme-pack="pastel"] .basic-note-head { color: var(--pi); background: transparent; padding-top: 10px; }
-:root[data-theme-pack="pastel"] .basic-note-caption { font-size: 16px; }
+:root[data-theme-pack="pastel"] .basic-note-caption { font-size: var(--type-detail); }
 :root[data-theme-pack="pastel"] .basic-note .basic-editor { font: 18px/1.6 var(--f-pastel); color: var(--pi); }
 :root[data-theme-pack="pastel"] .basic-format { border-top-color: #00000010; }
 :root[data-theme-pack="pastel"] :is(.basic-icon, .basic-format button, .basic-format .basic-photo):hover { background: #ffffff70; }
@@ -1356,8 +1441,6 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
   --mikkang-yellow: #e9d6a9;
   --mikkang-pink: #e1c2ab;
   --mikkang-blue: #d4d8c2;
-  --mikkang-radius: 5px;
-  --mikkang-shadow: 1px 4px 9px #40302138;
   --glass: #f8f3e7f0;
   --cherry: #a85035;
   --section-green: #dbe0c7;
@@ -1380,13 +1463,13 @@ input.secsel{width:120px;background:#fff;border:1.5px solid var(--ink);font:13px
 :root[data-theme-pack="vintage"] .tab { box-shadow: 0 4px 10px #2f231547, inset 0 -2px 0 #45311c1a; }
 :root[data-theme-pack="vintage"] :is(.bar, .bubble, .toast, .pal) { background: #f7efdef0; }
 :root[data-theme-pack="vintage"] :is(.overview-card, .upcoming-card) {
-  border-radius: 1px;
+  border-radius: var(--mikkang-radius);
   background-color: #f2ead6;
   background-image: repeating-linear-gradient(0deg, transparent 0 25px, #83694c1a 26px, transparent 27px);
   box-shadow: var(--mikkang-shadow);
 }
 :root[data-theme-pack="vintage"] .overview-assistant { background-color: #dbe0c7; }
-:root[data-theme-pack="vintage"] .overview-avatar { width: 56px; height: 62px; border: 0; background: transparent; }
+:root[data-theme-pack="vintage"] .overview-avatar { border: 0; background: transparent; }
 :root[data-theme-pack="vintage"] .upcoming-card { --upcoming-accent: #acb494; --upcoming-day-bg: #e8dfcb; }
 :root[data-theme-pack="vintage"] .upcoming-head h2 { font-family: Georgia, serif; font-style: italic; }
 :root[data-theme-pack="vintage"] .upcoming-day { border-radius: 3px; }
@@ -2150,9 +2233,16 @@ body{overflow:hidden}
       el.textContent = note.text;
     }
     el.classList.toggle('is-empty', !note.text.trim());
-    const toolbar = h('div', { class: 'basic-format', role: 'group', 'aria-label': '메모 서식' },
+    const toolbar = h('div', { class: 'basic-format', role: 'group', 'aria-label': '메모 서식' });
+    const toggle = h('button', { class: 'basic-format-toggle', type: 'button', 'aria-label': '서식 도구',
+      'aria-expanded': 'false', onmousedown: (e) => e.preventDefault(), onclick: () => {
+        const expanded = toolbar.toggleAttribute('data-expanded');
+        toggle.setAttribute('aria-expanded', String(expanded));
+      } }, 'Aa');
+    toolbar.append(toggle, ...
       FORMATS.map(([command, label, icon]) => h('button', {
         type: 'button',
+        'data-format': true,
         class: 'basic-format-' + command,
         'aria-label': label,
         title: label,
@@ -2381,7 +2471,7 @@ function addSection(name) {
   const x = { id: 's-' + uid(), name, color: S.sections.length % SEC_COLORS.length };
   S.sections.push(x); save(); return x;
 }
-let openSec = null, addingSec = false, dockFolded = false, modalKind = '';
+let openSec = null, addingSec = false, dockFolded = false, indexCollapsed = false, modalKind = '';
 function toggleSection(id) { openSec = openSec === id ? null : id; renderTabs(); }
 
 let ctx = 'desktop', forcedMode = null;
@@ -2423,13 +2513,25 @@ function updateHit() {
 
 function renderTabs() {
   const dock = $('#dock'); dock.replaceChildren();
+  dock.classList.toggle('index-collapsed', indexCollapsed);
+  const secs = [...S.sections]; if (notesIn('').length) secs.push(INBOX);
+  if (indexCollapsed) {
+    for (const x of secs) {
+      const color = secColor(x);
+      dock.append(h('button', { class: 'tab index-stripe', type: 'button', title: x.name,
+        'aria-label': `${x.name} 책갈피 펼치기`, style: `--tc:${color.bg}`, onclick: () => {
+          indexCollapsed = false; openSec = x.id; renderTabs();
+          $('.tab.sec.exp')?.focus({ preventScroll: true });
+        } }));
+    }
+    return;
+  }
   dock.append(h('button', {
     class: 'tab overview-tab', type: 'button', 'aria-expanded': String(modalKind === 'board'),
     'aria-controls': 'modal', onclick: () => modalKind === 'board' ? closeBoard() : openBoard(),
   }, h('span', { class: 'overview-tab-label' }, iel('board', 16),
     h('span', {}, modalKind === 'board' ? '간단히 보기' : '전체보기'))));
   dock.append(h('button', { class: 'tab add', type: 'button', onclick: () => newNote(true, openSec ?? undefined), 'aria-label': '새 메모 만들기' }, h('span', { class: 'k', style: 'display:flex;align-items:center;gap:5px' }, iel('plus', 15), '새 메모')));
-  const secs = [...S.sections]; if (notesIn('').length) secs.push(INBOX);
   for (const x of secs) {
     const list = notesIn(x.id), c = secColor(x), exp = openSec === x.id;
     const tab = h('button', { class: 'tab sec' + (exp ? ' exp' : '') + (list.some((n) => n.ring) ? ' ring' : ''), type: 'button', 'data-sec': x.id, 'aria-expanded': String(exp), title: `${x.name} · 메모 ${list.length}개 (눌러서 ${exp ? '접기' : '펼치기'})`, style: `--tc:${c.bg};--ti:${c.ink}`, onclick: () => toggleSection(x.id) },
@@ -2458,13 +2560,11 @@ function renderTabs() {
     dock.append(h('button', { class: 'tab add secadd', type: 'button', title: '큰 책갈피(섹션) 만들기', onclick: () => { addingSec = true; renderTabs(); api.focus(); setTimeout(() => { const i = $('#secNew'); i && i.focus(); }, 40); } },
       h('span', { class: 'k', style: 'display:flex;align-items:center;gap:5px' }, iel('folder', 14), '섹션 추가')));
   }
+  if (secs.length) dock.append(h('button', { class: 'tab index-fold', type: 'button', onclick: () => {
+    indexCollapsed = true; renderTabs(); $('.index-stripe')?.focus({ preventScroll: true });
+  } }, '책갈피 접기'));
 }
 function setTabText(n) { const b = $(`.tab[data-id="${n.id}"] .k`); if (b) b.textContent = memoTitle(n) || '새 메모'; }
-
-function fit() {
-  const s = Math.min(clamp((H() - 84 - 14) / 676, .5, 1), clamp((W() - 150 - 16) / 420, .5, 1), 1).toFixed(3);
-  $('#sheet').style.setProperty('--s', s);
-}
 
 /* ─────────── 열기 · 닫기 ─────────── */
 const noteHash = (n) => n.title + '\u0001' + n.text + '\u0001' + n.photos.length;
@@ -2494,7 +2594,7 @@ function openNote(id) {
   if (openId !== id) basicDetails = false;
   closePeek(true); closeBubble();
   openId = n.id; n.ring = false; n.viewedAt = Date.now(); selStk = null; openSec = secIdOf(n);
-  renderCard(n); fit();
+  renderCard(n);
   $('#sheet').classList.add('open');
   renderTabs(); applyMode(); save();
   api.focus();
@@ -2517,7 +2617,7 @@ function newNote(focus = true, sectionId) {
   return n;
 }
 
-function togglePetBookmarks() {
+function togglePetBookmarks(anchor) {
   const closing = !$('#stage').classList.contains('dock-hidden') || modalOpen || peek.open || (bubble.open && bubble.menu);
   dismissPeek();
   if (modalKind === 'board') closeBoard();
@@ -2530,10 +2630,13 @@ function togglePetBookmarks() {
   }
   summoned = true;
   dockFolded = false;
+  indexCollapsed = false;
   closeBubble();
+  renderTabs();
+  if (anchor && anchor.x >= -anchor.width && anchor.x < W() && anchor.y >= -anchor.height && anchor.y < H()) openMenu(anchor);
   applyMode();
   api.focus();
-  $('#dock').focus({ preventScroll: true });
+  if (!bubble.menu) $('#dock').focus({ preventScroll: true });
 }
 
 /* ─────────── 메모지 카드 ─────────── */
@@ -2553,10 +2656,10 @@ function renderCard(n) {
     ? `background-color:${bk.b};background-image:linear-gradient(90deg,${bk.a}99 50%,transparent 50%),linear-gradient(${bk.a}99 50%,transparent 50%);background-size:24px 24px`
     : `background:${bk.a}` }));
   card.insertAdjacentHTML('beforeend', paperSVG(t));
-  card.insertAdjacentHTML('beforeend', clipSVG(t.clip, t.clipX));
+  card.insertAdjacentHTML('beforeend', clipSVG(t.clip, t.clipX * 340 / 420));
 
   // 메모지 위에 앉은 캐릭터 — 누르면 AI 정리
-  const perchLeft = t.clipX < 200 ? 300 : 34;
+  const perchLeft = t.clipX < 200 ? 228 : 32;
   const perch = h('div', { class: 'perch mood-' + mood + (perchLeft > 200 ? ' r' : ' l'), id: 'perch', title: '눌러서 AI 정리', style: `left:${perchLeft}px;--pc:${charColor()}`, onclick: () => organizeNote(n, {}) });
   perch.innerHTML = perchHTML() + '<div class="paws"><i></i><i></i></div>';
   perch.append(h('div', { class: 'say', id: 'perchSay' }));
@@ -2897,17 +3000,22 @@ function renderStickers(n) {
   }
 }
 function afterEdit(n) { save(); renderStickers(n); }
-function place(el, st) { el.style.width = sizeOf(st) + 'px'; el.style.left = st.x + 'px'; el.style.top = st.y + 'px'; el.style.transform = `translate(-50%,-50%) rotate(${st.rot}deg)`; }
-function placeBar(bar, st, el) { const hh = el ? el.offsetHeight : 40; bar.style.left = clamp(st.x - 60, 4, 420 - 124) + 'px'; bar.style.top = clamp(st.y - hh / 2 - 48, 2, 520) + 'px'; }
+function place(el, st) { el.style.width = (sizeOf(st) / 420 * 100) + '%'; el.style.left = (st.x / 420 * 100) + '%'; el.style.top = (st.y / 560 * 100) + '%'; el.style.transform = `translate(-50%,-50%) rotate(${st.rot}deg)`; }
+function placeBar(bar, st, el) {
+  const { clientWidth: width, clientHeight: height } = bar.parentElement;
+  const hh = el ? el.offsetHeight : 40;
+  bar.style.left = clamp(st.x * width / 420 - 60, 4, width - 124) + 'px';
+  bar.style.top = clamp(st.y * height / 560 - hh / 2 - 48, 2, height - 40) + 'px';
+}
 function bindDrag(el, n, st) {
   el.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     const was = selStk === st.id; selStk = st.id;
-    const card = el.closest('.card'), sc = card.getBoundingClientRect().width / 420;
+    const card = el.closest('.card'), rect = el.parentElement.getBoundingClientRect();
     const sx = e.clientX, sy = e.clientY, ox = st.x, oy = st.y; let moved = false;
     el.setPointerCapture(e.pointerId); dragging = true;
     document.querySelectorAll('.stk.sel').forEach((x) => x.classList.remove('sel')); el.classList.add('sel');
-    const mv = (ev) => { moved = true; st.x = clamp(ox + (ev.clientX - sx) / sc, -10, 430); st.y = clamp(oy + (ev.clientY - sy) / sc, -10, 570); place(el, st); const b = card.querySelector('.sbar'); if (b) placeBar(b, st, el); };
+    const mv = (ev) => { moved = true; st.x = clamp(ox + (ev.clientX - sx) * 420 / rect.width, -10, 430); st.y = clamp(oy + (ev.clientY - sy) * 560 / rect.height, -10, 570); place(el, st); const b = card.querySelector('.sbar'); if (b) placeBar(b, st, el); };
     const up = () => { dragging = false; el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); save(); if (!was || !moved) renderStickers(n); };
     el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   });
@@ -3180,17 +3288,25 @@ function toggleMenu() {
 
 /* 말풍선 */
 function placeBubble() {
-  const b = $('#bubble'), bw = b.offsetWidth || 300, bh = b.offsetHeight || 160;
-  const x = S.settings.side === 'left' ? 18 : Math.max(8, W() - bw - 18);
-  const y = Math.max(8, H() - bh - 28);
-  b.style.left = x + 'px'; b.style.top = y + 'px';
+  const b = $('#bubble'), bw = b.offsetWidth, bh = b.offsetHeight;
+  const anchor = bubble.anchor;
+  const center = anchor ? anchor.x + anchor.width / 2 : S.settings.side === 'left' ? bw / 2 + 12 : W() - bw / 2 - 12;
+  const x = clamp(center - bw / 2, 12, W() - bw - 12);
+  const below = !!anchor && anchor.y < bh + 22;
+  const y = !anchor ? H() - bh - 28 : below ? anchor.y + anchor.height + 10 : anchor.y - bh - 10;
+  b.dataset.menu = String(bubble.menu);
+  b.toggleAttribute('data-anchored', !!anchor);
+  b.toggleAttribute('data-below', below);
+  b.style.setProperty('--tail-x', clamp(center - x, 8, bw - 8) + 'px');
+  b.style.left = x + 'px'; b.style.top = clamp(y, 12, H() - bh - 12) + 'px';
 }
-function say(msg, { ttl = 6000, menu, actions = [] } = {}) {
+function say(msg, { ttl = 6000, menu, actions = [], anchor } = {}) {
   const b = $('#bubble');
   const keepMenu = menu ?? (bubble.open && bubble.menu);
-  bubble = { open: true, menu: keepMenu, t: bubble.t };
+  bubble = { open: true, menu: keepMenu, t: bubble.t, anchor: anchor || (keepMenu ? bubble.anchor : null) };
+  b.dataset.menu = String(keepMenu);
   b.replaceChildren(h('div', { class: 'who' }, C.charName(S)), h('div', { class: 'msg' }, msg));
-  if (actions.length) b.append(h('div', { class: 'ask' }, actions.map((a) => h('button', { class: 'btn primary', type: 'button', onclick: () => { closeBubble(); a.run(); } }, a.label))));
+  if (actions.length) b.append(h('div', { class: 'ask' }, actions.slice(0, 2).map((a) => h('button', { class: 'btn primary', type: 'button', onclick: () => { closeBubble(); a.run(); } }, a.label))));
   if (keepMenu) appendMenu(b);
   b.hidden = false; placeBubble(); updateHit();
   clearTimeout(bubble.t);
@@ -3201,20 +3317,17 @@ function greeting() {
   const hi = hr < 11 ? '좋은 아침이에요!' : hr < 17 ? '무엇을 도와드릴까요?' : '오늘 하루 수고 많았어요!';
   return `${hi} ${briefing()}`;
 }
-function openMenu() { say(greeting(), { menu: true, ttl: 0 }); setTimeout(() => { const i = $('#askIn'); i && i.focus(); }, 60); }
+function openMenu(anchor) { say(greeting(), { menu: true, ttl: 0, anchor }); setTimeout(() => { const i = $('#askIn'); i && i.focus(); }, 60); }
 function appendMenu(b) {
   const input = h('input', { id: 'askIn', type: 'text', placeholder: '비서에게 부탁하기…', 'aria-label': '비서에게 부탁하기',
     onkeydown: (e) => { if (e.key === 'Enter' && !e.isComposing && input.value.trim()) { askAssistant(input.value); input.value = ''; } } });
   b.append(
-    h('div', { class: 'acts' },
-      h('button', { type: 'button', onclick: () => { closeBubble(); newNote(); } }, iel('edit', 18), '새 메모'),
-      h('button', { type: 'button', onclick: () => { closeBubble(); toggleAgenda(); } }, iel('cal', 18), '일정'),
-      h('button', { type: 'button', onclick: () => askWeather('오늘 날씨') }, iel('sun', 18), '날씨'),
-      h('button', { type: 'button', onclick: () => { closeBubble(); openBoard(); } }, iel('board', 18), '전체보기'),
-      h('button', { type: 'button', onclick: () => { closeBubble(); openSettings(); } }, iel('gear', 18), '설정')),
     h('div', { class: 'ask' }, input,
       h('button', { class: 'btn primary icon', type: 'button', 'aria-label': '보내기', onclick: () => { if (input.value.trim()) { askAssistant(input.value); input.value = ''; } }, html: ico('send', 16) })),
-    h('div', { class: 'ex' }, '예) 내일 12시까지 회의자료 제출 · 오늘 날씨 어때? · 부산 내일 날씨'));
+    h('div', { class: 'acts' },
+      h('button', { type: 'button', onclick: () => { closeBubble(); openBoard(); } }, iel('board', 16), '전체보기 열기'),
+      h('button', { type: 'button', onclick: () => { closeBubble(); newNote(); } }, iel('edit', 18), '새 메모'),
+      h('button', { type: 'button', onclick: () => { closeBubble(); openSettings(); } }, iel('gear', 18), '비서 설정')));
 }
 function closeBubble() { clearTimeout(bubble.t); bubble = { open: false, menu: false, t: 0 }; $('#bubble').hidden = true; updateHit(); }
 
@@ -3518,8 +3631,8 @@ let overviewAiSearch = null;
 let overviewPinnedOnly = false;
 let overviewEditing = false;
 const overviewCardLabels = {
-  assistant: 'AI 비서',
-  schedule: '일정',
+  assistant: '오늘',
+  schedule: '이번 주 일정',
   memos: '메모 모아보기',
   ai: 'AI 정리',
 };
@@ -3770,7 +3883,7 @@ function overviewSchedule() {
     },
   });
   return h('section', { class: 'overview-card upcoming-card', id: 'overview-schedule', 'aria-label': '일정' },
-    h('header', { class: 'overview-row upcoming-head' }, h('h2', {}, 'Upcoming'), h('span', {}, `오늘 일정 ${todayCount}개`)),
+    h('header', { class: 'overview-row upcoming-head' }, h('h2', {}, '이번 주 일정'), h('span', {}, `오늘 일정 ${todayCount}개`)),
     h('div', { class: 'upcoming-week', role: 'group', 'aria-label': `${fmtDate(monday)}부터 일주일` }, days),
     active.length ? h('ul', { class: 'upcoming-events' }, active.map(({ n, e }) =>
       h('li', {}, h('button', { type: 'button', onclick: () => openNote(n.id) },
@@ -3812,7 +3925,7 @@ async function refreshPetControls(action, value) {
 
 function renderBoard() {
   const m = $('#modal'), ov = boardOverview();
-  const previousScroll = $('.mikkang-overview')?.scrollTop || 0;
+  const previousScroll = $('.overview-grid')?.scrollTop || 0;
   const ai = S.boardAI && S.boardAI.hash === boardHash() ? S.boardAI : null;
   const live = (id) => notesIn(id).filter((n) => !isEmpty(n));
   const secs = [...S.sections]; if (live('').length) secs.push(INBOX);
@@ -3822,24 +3935,42 @@ function renderBoard() {
     secs.map((x) => { const c = secColor(x); return h('button', { type: 'button', 'aria-pressed': String(boardFilter === x.id), style: `--tc:${c.bg};--ti:${c.ink}`, onclick: () => { boardFilter = x.id; renderBoard(); } }, `${x.name} ${live(x.id).length}`); }));
   const groups = h('div', { id: 'overview-groups' });
   const quick = h('input', { type: 'text', placeholder: '메모를 입력하세요', 'aria-label': '빠른 메모', required: true });
-  const avatar = h('span', { class: 'overview-avatar', 'aria-hidden': 'true', html: perchHTML() });
+  const quickSection = h('select', { class: 'overview-quick-section', 'aria-label': '빠른 메모 섹션' },
+    h('option', { value: '' }, '분류 없음'),
+    S.sections.map((section) => h('option', { value: section.id, selected: section.id === openSec }, section.name)));
+  const weatherValue = h('dd', {}, '—');
+  const weatherLabel = h('dt', {}, '날씨');
+  const now = Date.now(), today = startOfDay(new Date(now));
+  const remaining = todayEvents().filter(({ e }) => e.allDay || e.at >= now);
+  const alarm = S.notes.flatMap((n) => n.events).filter((e) => !e.done && e.alarm && e.at > now)
+    .sort((a, b) => a.at - b.at)[0];
+  const search = h('input', { id: 'overview-search', type: 'search', value: overviewQuery, 'aria-label': '메모 검색',
+    placeholder: '메모 검색', oninput: (e) => { overviewQuery = e.target.value; renderOverviewNotes(); },
+    onkeydown: (e) => {
+      if (e.key !== 'Escape' || !e.currentTarget.value) return;
+      e.preventDefault(); e.stopPropagation();
+      overviewQuery = e.currentTarget.value = ''; renderOverviewNotes();
+    } });
   const cards = {
     assistant: h('section', { class: 'overview-card overview-assistant' },
       h('header', { class: 'overview-row' },
-        avatar,
-        h('h2', {}, C.charName(S)),
-        h('button', { class: 'overview-icon', type: 'button', 'aria-label': 'AI 비서', onclick: toggleMenu }, iel('chat', 17))),
-      h('div', { class: 'overview-brief' }, h('b', {}, '오늘 브리핑'), h('p', {}, briefing())),
+        h('h2', {}, '오늘'),
+        h('button', { class: 'overview-avatar', type: 'button', 'aria-label': C.charName(S), onclick: toggleMenu, html: perchHTML() })),
+      h('dl', { class: 'overview-today' },
+        h('div', {}, weatherLabel, weatherValue),
+        h('div', {}, h('dt', {}, '남은 일정'), h('dd', {}, remaining.length)),
+        h('div', {}, h('dt', {}, '다음 알람'), h('dd', {}, alarm ? fmtTime(new Date(alarm.at)) : '—'))),
+      alarm ? h('p', { class: 'overview-muted' }, `다음 알람 · ${alarm.title}`) : null,
       api.petControls ? h('div', { id: 'overview-pet', class: 'overview-pet', hidden: true }) : null,
       h('form', { class: 'overview-quick', onsubmit: (e) => {
         e.preventDefault();
         const text = quick.value.trim();
         if (!text) return;
-        const note = blankNote();
+        const note = blankNote(quickSection.value);
         note.text = text;
         S.notes.unshift(note);
         openNote(note.id);
-      } }, quick, h('button', { class: 'overview-icon', type: 'submit', 'aria-label': '메모 추가' }, iel('send', 16)))),
+      } }, quickSection, quick, h('button', { class: 'overview-icon', type: 'submit', 'aria-label': '메모 추가' }, iel('send', 16)))),
     schedule: overviewSchedule(),
     memos: h('section', { class: 'overview-card' },
       h('header', { class: 'overview-row' }, h('h2', {}, '메모 모아보기'),
@@ -3852,16 +3983,6 @@ function renderBoard() {
           } }, overviewSelecting ? '선택 취소' : '선택') : null,
           h('button', { class: 'btn primary overview-add-note', type: 'button', onclick: () => newNote() }, iel('plus', 14), '메모'))),
       total ? h('div', { class: 'overview-library-tools' },
-        h('input', { id: 'overview-search', type: 'search', value: overviewQuery, 'aria-label': '메모 검색',
-          placeholder: '제목 또는 내용 검색', oninput: (e) => { overviewQuery = e.target.value; renderOverviewNotes(); },
-          onkeydown: (e) => {
-            if (e.key !== 'Escape' || !e.currentTarget.value) return;
-            e.preventDefault();
-            e.stopPropagation();
-            overviewQuery = e.currentTarget.value = '';
-            renderOverviewNotes();
-          },
-        }),
         h('button', { type: 'button', class: 'overview-pinned-only', 'aria-pressed': String(overviewPinnedOnly), onclick: (e) => {
           overviewPinnedOnly = !overviewPinnedOnly;
           e.currentTarget.setAttribute('aria-pressed', String(overviewPinnedOnly));
@@ -3886,8 +4007,14 @@ function renderBoard() {
   };
   const layout = S.settings.overviewLayout;
   const visible = layout.filter((card) => !card.hidden);
+  const grid = h('div', { class: 'overview-grid' },
+    overviewEditing ? overviewLayoutEditor(layout) : null,
+    visible.map(({ id }) => h('div', { class: 'overview-slot', 'data-widget-card': id }, cards[id])),
+    !visible.length && !overviewEditing ? h('p', { class: 'overview-card overview-muted' }, '위젯 편집에서 표시할 항목을 고를 수 있어요.') : null);
   const panel = h('div', { class: 'mikkang-overview', role: 'region', 'aria-label': '전체보기' },
     h('header', { class: 'overview-toolbar' },
+      h('h1', {}, '전체보기'), h('time', { datetime: P.isoLocal(today).slice(0, 10) }, fmtDate(today)),
+      total && visible.some(({ id }) => id === 'memos') ? search : null,
       h('button', { class: 'btn overview-edit', type: 'button', 'aria-expanded': String(overviewEditing), onclick: () => {
         overviewEditing = !overviewEditing;
         renderBoard();
@@ -3895,12 +4022,18 @@ function renderBoard() {
       } }, iel('edit', 14), overviewEditing ? '편집 완료' : '위젯 편집'),
       h('button', { class: 'overview-icon', type: 'button', 'aria-label': '설정', onclick: openSettings }, iel('gear', 16)),
       h('button', { class: 'overview-icon overview-close', type: 'button', 'aria-label': '위젯 접기', onclick: closeBoard }, iel('x', 16))),
-    overviewEditing ? overviewLayoutEditor(layout) : null,
-    visible.map(({ id }) => h('div', { class: 'overview-slot', 'data-widget-card': id }, cards[id])),
-    !visible.length && !overviewEditing ? h('p', { class: 'overview-card overview-muted' }, '위젯 편집에서 표시할 항목을 고를 수 있어요.') : null);
+    grid);
   m.replaceChildren(panel);
+  if (weatherValue.isConnected && api.weather) {
+    const city = (S.settings.weatherCity || '서울').trim();
+    void api.weather(city).then((result) => {
+      if (!weatherValue.isConnected || !result?.ok || !Number.isFinite(result.now?.temp)) return;
+      weatherValue.textContent = `${Math.round(result.now.temp)}°`;
+      weatherLabel.textContent = result.today?.pop == null ? WMO(result.now.code) : `비 ${result.today.pop}%`;
+    }).catch(() => {});
+  }
   renderOverviewNotes();
-  panel.scrollTop = previousScroll;
+  grid.scrollTop = previousScroll;
   refreshOverviewAction();
   void refreshPetControls();
 }
@@ -3992,16 +4125,20 @@ function bindGlobal() {
     await addPhotos(n, fs);
     if (openId !== n.id) openNote(n.id);
   });
-  api.onDisplay(() => { fit(); if (bubble.open) placeBubble(); });
+  api.onDisplay(() => { if (bubble.open) placeBubble(); });
   api.onPetChanged?.(() => { void refreshPetControls(); });
   api.onPetMenuSelected?.(applyPetMenuSelection);
-  api.onPetBriefingRequest?.((id) => api.showPetBriefing(id, briefing()));
+  api.onPetBriefingRequest?.((id) => {
+    const events = todayEvents().filter(({ e }) => e.allDay || e.at >= Date.now());
+    const next = events[0]?.e;
+    api.showPetBriefing(id, next ? `남은 일정 ${events.length}개\n다음 ${next.allDay ? '종일' : fmtTime(new Date(next.at))} ${next.title}` : '오늘 남은 일정이 없어요.');
+  });
   api.onOpenNote((id) => { if (id && byId(id)) openNote(id); });
-  api.onCommand((cmd) => {
+  api.onCommand((cmd, anchor) => {
     if (cmd === 'summon') toggleDock();
     else if (cmd === 'board') openBoard();
     else if (cmd === 'new') newNote();
-    else if (cmd === 'pet-bookmarks') togglePetBookmarks();
+    else if (cmd === 'pet-bookmarks') togglePetBookmarks(anchor);
     else if (cmd === 'assistant') toggleMenu();
     else if (cmd === 'agenda') toggleAgenda();
     else if (cmd === 'settings') openSettings();
@@ -4015,7 +4152,14 @@ function bindGlobal() {
     if (openId) closeNote();
     else if (bubble.open || summoned) closeAll();
   });
-  addEventListener('resize', () => { fit(); if (bubble.open) placeBubble(); });
+  api.onBlur?.(() => { if (bubble.menu) closeBubble(); });
+  document.addEventListener('pointerdown', (e) => { if (bubble.menu && !e.target.closest('#bubble, .overview-avatar')) closeBubble(); }, true);
+  document.addEventListener('selectionchange', () => {
+    const toolbar = $('.basic-format'), editor = $('.basic-editor'), selection = document.getSelection();
+    if (toolbar && editor) toolbar.toggleAttribute('data-selection',
+      !!selection?.rangeCount && !selection.isCollapsed && editor.contains(selection.getRangeAt(0).commonAncestorContainer));
+  });
+  addEventListener('resize', () => { if (bubble.open) placeBubble(); });
 }
 
 async function boot() {
@@ -4030,7 +4174,7 @@ async function boot() {
   api.applySettings({ launchAtLogin: S.settings.launchAtLogin, modeOverride: S.settings.modeOverride, proPreview: S.settings.proPreview });
   bindGlobal();
   applyThemePack(S.settings.themePack, !loaded); // 처음 켤 때는 테마의 캐릭터·펫도 함께
-  applySide(); renderTabs(); fit(); applyMode();
+  applySide(); renderTabs(); applyMode();
   if (info.args?.includes('--overview')) openBoard();
   else void refreshPetControls();
   save();

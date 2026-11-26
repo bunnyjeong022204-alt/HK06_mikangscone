@@ -14,7 +14,7 @@ import { AppSettings, DEFAULT_SPECIES_ID } from './appSettings';
 import { loadCompanionScene } from './sceneLoader';
 import fs from 'node:fs';
 import { getLocalSpeciesRoot } from './speciesLoader';
-import { IPC, MAX_DROPPED_PHOTOS, MAX_PHOTO_DROP_BYTES, type DroppedPhoto } from '../shared/ipcContract';
+import { IPC, MAX_DROPPED_PHOTOS, MAX_PHOTO_DROP_BYTES, type DroppedPhoto, type Rect } from '../shared/ipcContract';
 import { saveImagePet, runPetMenuAction } from './petMenu';
 import type { SpeciesConfig } from '../shared/speciesSchema';
 
@@ -75,9 +75,10 @@ function watchActiveSpecies(speciesId: string, publish: (scene: SpeciesConfig) =
   unwatchSpecies = () => { watcher.close(); unwatchers.forEach((stop) => stop()); };
 }
 
-export function startPet(notifyVisibilityChange: () => void, openBookmarks: () => void, onMenuSelection: (id: string) => void, requestBriefing: (id: string) => void,
+export function startPet(notifyVisibilityChange: () => void, openBookmarks: (anchor: Rect) => void, onMenuSelection: (id: string) => void, requestBriefing: (id: string) => void,
   onPhotos: (photos: DroppedPhoto[]) => void,
-  onPhotoError: (message: string) => void) {
+  onPhotoError: (message: string) => void,
+  openOverview: () => void) {
   onVisibilityChange = notifyVisibilityChange;
   registerAssetProtocolHandler();
   ensureLocalSpeciesRoot();
@@ -144,8 +145,15 @@ export function startPet(notifyVisibilityChange: () => void, openBookmarks: () =
   ipcMain.on(IPC.PHOTO_ERROR, (event, message) => {
     if (event.sender === window.webContents && typeof message === 'string' && message.length <= 100) onPhotoError(message);
   });
-  ipcMain.on(IPC.OPEN_BOOKMARKS, (event) => {
-    if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents) openBookmarks();
+  ipcMain.on(IPC.OPEN_BOOKMARKS, (event, anchor) => {
+    if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents &&
+        anchor && [anchor.x, anchor.y, anchor.width, anchor.height].every(Number.isFinite)) {
+      const origin = window.getBounds();
+      openBookmarks({ x: origin.x + anchor.x, y: origin.y + anchor.y, width: anchor.width, height: anchor.height });
+    }
+  });
+  ipcMain.on(IPC.OPEN_OVERVIEW, (event) => {
+    if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents) openOverview();
   });
   ipcMain.on(IPC.REQUEST_BRIEFING, (event, id: unknown) => {
     if (!window.isDestroyed() && window.isVisible() && event.sender === window.webContents &&

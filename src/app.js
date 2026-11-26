@@ -209,7 +209,7 @@ function addSection(name) {
   const x = { id: 's-' + uid(), name, color: S.sections.length % SEC_COLORS.length };
   S.sections.push(x); save(); return x;
 }
-let openSec = null, addingSec = false, dockFolded = false, modalKind = '';
+let openSec = null, addingSec = false, dockFolded = false, indexCollapsed = false, modalKind = '';
 function toggleSection(id) { openSec = openSec === id ? null : id; renderTabs(); }
 
 let ctx = 'desktop', forcedMode = null;
@@ -251,13 +251,25 @@ function updateHit() {
 
 function renderTabs() {
   const dock = $('#dock'); dock.replaceChildren();
+  dock.classList.toggle('index-collapsed', indexCollapsed);
+  const secs = [...S.sections]; if (notesIn('').length) secs.push(INBOX);
+  if (indexCollapsed) {
+    for (const x of secs) {
+      const color = secColor(x);
+      dock.append(h('button', { class: 'tab index-stripe', type: 'button', title: x.name,
+        'aria-label': `${x.name} 책갈피 펼치기`, style: `--tc:${color.bg}`, onclick: () => {
+          indexCollapsed = false; openSec = x.id; renderTabs();
+          $('.tab.sec.exp')?.focus({ preventScroll: true });
+        } }));
+    }
+    return;
+  }
   dock.append(h('button', {
     class: 'tab overview-tab', type: 'button', 'aria-expanded': String(modalKind === 'board'),
     'aria-controls': 'modal', onclick: () => modalKind === 'board' ? closeBoard() : openBoard(),
   }, h('span', { class: 'overview-tab-label' }, iel('board', 16),
     h('span', {}, modalKind === 'board' ? '간단히 보기' : '전체보기'))));
   dock.append(h('button', { class: 'tab add', type: 'button', onclick: () => newNote(true, openSec ?? undefined), 'aria-label': '새 메모 만들기' }, h('span', { class: 'k', style: 'display:flex;align-items:center;gap:5px' }, iel('plus', 15), '새 메모')));
-  const secs = [...S.sections]; if (notesIn('').length) secs.push(INBOX);
   for (const x of secs) {
     const list = notesIn(x.id), c = secColor(x), exp = openSec === x.id;
     const tab = h('button', { class: 'tab sec' + (exp ? ' exp' : '') + (list.some((n) => n.ring) ? ' ring' : ''), type: 'button', 'data-sec': x.id, 'aria-expanded': String(exp), title: `${x.name} · 메모 ${list.length}개 (눌러서 ${exp ? '접기' : '펼치기'})`, style: `--tc:${c.bg};--ti:${c.ink}`, onclick: () => toggleSection(x.id) },
@@ -286,13 +298,11 @@ function renderTabs() {
     dock.append(h('button', { class: 'tab add secadd', type: 'button', title: '큰 책갈피(섹션) 만들기', onclick: () => { addingSec = true; renderTabs(); api.focus(); setTimeout(() => { const i = $('#secNew'); i && i.focus(); }, 40); } },
       h('span', { class: 'k', style: 'display:flex;align-items:center;gap:5px' }, iel('folder', 14), '섹션 추가')));
   }
+  if (secs.length) dock.append(h('button', { class: 'tab index-fold', type: 'button', onclick: () => {
+    indexCollapsed = true; renderTabs(); $('.index-stripe')?.focus({ preventScroll: true });
+  } }, '책갈피 접기'));
 }
 function setTabText(n) { const b = $(`.tab[data-id="${n.id}"] .k`); if (b) b.textContent = memoTitle(n) || '새 메모'; }
-
-function fit() {
-  const s = Math.min(clamp((H() - 84 - 14) / 676, .5, 1), clamp((W() - 150 - 16) / 420, .5, 1), 1).toFixed(3);
-  $('#sheet').style.setProperty('--s', s);
-}
 
 /* ─────────── 열기 · 닫기 ─────────── */
 const noteHash = (n) => n.title + '\u0001' + n.text + '\u0001' + n.photos.length;
@@ -322,7 +332,7 @@ function openNote(id) {
   if (openId !== id) basicDetails = false;
   closePeek(true); closeBubble();
   openId = n.id; n.ring = false; n.viewedAt = Date.now(); selStk = null; openSec = secIdOf(n);
-  renderCard(n); fit();
+  renderCard(n);
   $('#sheet').classList.add('open');
   renderTabs(); applyMode(); save();
   api.focus();
@@ -345,7 +355,7 @@ function newNote(focus = true, sectionId) {
   return n;
 }
 
-function togglePetBookmarks() {
+function togglePetBookmarks(anchor) {
   const closing = !$('#stage').classList.contains('dock-hidden') || modalOpen || peek.open || (bubble.open && bubble.menu);
   dismissPeek();
   if (modalKind === 'board') closeBoard();
@@ -358,10 +368,13 @@ function togglePetBookmarks() {
   }
   summoned = true;
   dockFolded = false;
+  indexCollapsed = false;
   closeBubble();
+  renderTabs();
+  if (anchor && anchor.x >= -anchor.width && anchor.x < W() && anchor.y >= -anchor.height && anchor.y < H()) openMenu(anchor);
   applyMode();
   api.focus();
-  $('#dock').focus({ preventScroll: true });
+  if (!bubble.menu) $('#dock').focus({ preventScroll: true });
 }
 
 /* ─────────── 메모지 카드 ─────────── */
@@ -381,10 +394,10 @@ function renderCard(n) {
     ? `background-color:${bk.b};background-image:linear-gradient(90deg,${bk.a}99 50%,transparent 50%),linear-gradient(${bk.a}99 50%,transparent 50%);background-size:24px 24px`
     : `background:${bk.a}` }));
   card.insertAdjacentHTML('beforeend', paperSVG(t));
-  card.insertAdjacentHTML('beforeend', clipSVG(t.clip, t.clipX));
+  card.insertAdjacentHTML('beforeend', clipSVG(t.clip, t.clipX * 340 / 420));
 
   // 메모지 위에 앉은 캐릭터 — 누르면 AI 정리
-  const perchLeft = t.clipX < 200 ? 300 : 34;
+  const perchLeft = t.clipX < 200 ? 228 : 32;
   const perch = h('div', { class: 'perch mood-' + mood + (perchLeft > 200 ? ' r' : ' l'), id: 'perch', title: '눌러서 AI 정리', style: `left:${perchLeft}px;--pc:${charColor()}`, onclick: () => organizeNote(n, {}) });
   perch.innerHTML = perchHTML() + '<div class="paws"><i></i><i></i></div>';
   perch.append(h('div', { class: 'say', id: 'perchSay' }));
@@ -725,17 +738,22 @@ function renderStickers(n) {
   }
 }
 function afterEdit(n) { save(); renderStickers(n); }
-function place(el, st) { el.style.width = sizeOf(st) + 'px'; el.style.left = st.x + 'px'; el.style.top = st.y + 'px'; el.style.transform = `translate(-50%,-50%) rotate(${st.rot}deg)`; }
-function placeBar(bar, st, el) { const hh = el ? el.offsetHeight : 40; bar.style.left = clamp(st.x - 60, 4, 420 - 124) + 'px'; bar.style.top = clamp(st.y - hh / 2 - 48, 2, 520) + 'px'; }
+function place(el, st) { el.style.width = (sizeOf(st) / 420 * 100) + '%'; el.style.left = (st.x / 420 * 100) + '%'; el.style.top = (st.y / 560 * 100) + '%'; el.style.transform = `translate(-50%,-50%) rotate(${st.rot}deg)`; }
+function placeBar(bar, st, el) {
+  const { clientWidth: width, clientHeight: height } = bar.parentElement;
+  const hh = el ? el.offsetHeight : 40;
+  bar.style.left = clamp(st.x * width / 420 - 60, 4, width - 124) + 'px';
+  bar.style.top = clamp(st.y * height / 560 - hh / 2 - 48, 2, height - 40) + 'px';
+}
 function bindDrag(el, n, st) {
   el.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     const was = selStk === st.id; selStk = st.id;
-    const card = el.closest('.card'), sc = card.getBoundingClientRect().width / 420;
+    const card = el.closest('.card'), rect = el.parentElement.getBoundingClientRect();
     const sx = e.clientX, sy = e.clientY, ox = st.x, oy = st.y; let moved = false;
     el.setPointerCapture(e.pointerId); dragging = true;
     document.querySelectorAll('.stk.sel').forEach((x) => x.classList.remove('sel')); el.classList.add('sel');
-    const mv = (ev) => { moved = true; st.x = clamp(ox + (ev.clientX - sx) / sc, -10, 430); st.y = clamp(oy + (ev.clientY - sy) / sc, -10, 570); place(el, st); const b = card.querySelector('.sbar'); if (b) placeBar(b, st, el); };
+    const mv = (ev) => { moved = true; st.x = clamp(ox + (ev.clientX - sx) * 420 / rect.width, -10, 430); st.y = clamp(oy + (ev.clientY - sy) * 560 / rect.height, -10, 570); place(el, st); const b = card.querySelector('.sbar'); if (b) placeBar(b, st, el); };
     const up = () => { dragging = false; el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); save(); if (!was || !moved) renderStickers(n); };
     el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   });
@@ -1008,17 +1026,25 @@ function toggleMenu() {
 
 /* 말풍선 */
 function placeBubble() {
-  const b = $('#bubble'), bw = b.offsetWidth || 300, bh = b.offsetHeight || 160;
-  const x = S.settings.side === 'left' ? 18 : Math.max(8, W() - bw - 18);
-  const y = Math.max(8, H() - bh - 28);
-  b.style.left = x + 'px'; b.style.top = y + 'px';
+  const b = $('#bubble'), bw = b.offsetWidth, bh = b.offsetHeight;
+  const anchor = bubble.anchor;
+  const center = anchor ? anchor.x + anchor.width / 2 : S.settings.side === 'left' ? bw / 2 + 12 : W() - bw / 2 - 12;
+  const x = clamp(center - bw / 2, 12, W() - bw - 12);
+  const below = !!anchor && anchor.y < bh + 22;
+  const y = !anchor ? H() - bh - 28 : below ? anchor.y + anchor.height + 10 : anchor.y - bh - 10;
+  b.dataset.menu = String(bubble.menu);
+  b.toggleAttribute('data-anchored', !!anchor);
+  b.toggleAttribute('data-below', below);
+  b.style.setProperty('--tail-x', clamp(center - x, 8, bw - 8) + 'px');
+  b.style.left = x + 'px'; b.style.top = clamp(y, 12, H() - bh - 12) + 'px';
 }
-function say(msg, { ttl = 6000, menu, actions = [] } = {}) {
+function say(msg, { ttl = 6000, menu, actions = [], anchor } = {}) {
   const b = $('#bubble');
   const keepMenu = menu ?? (bubble.open && bubble.menu);
-  bubble = { open: true, menu: keepMenu, t: bubble.t };
+  bubble = { open: true, menu: keepMenu, t: bubble.t, anchor: anchor || (keepMenu ? bubble.anchor : null) };
+  b.dataset.menu = String(keepMenu);
   b.replaceChildren(h('div', { class: 'who' }, C.charName(S)), h('div', { class: 'msg' }, msg));
-  if (actions.length) b.append(h('div', { class: 'ask' }, actions.map((a) => h('button', { class: 'btn primary', type: 'button', onclick: () => { closeBubble(); a.run(); } }, a.label))));
+  if (actions.length) b.append(h('div', { class: 'ask' }, actions.slice(0, 2).map((a) => h('button', { class: 'btn primary', type: 'button', onclick: () => { closeBubble(); a.run(); } }, a.label))));
   if (keepMenu) appendMenu(b);
   b.hidden = false; placeBubble(); updateHit();
   clearTimeout(bubble.t);
@@ -1029,20 +1055,17 @@ function greeting() {
   const hi = hr < 11 ? '좋은 아침이에요!' : hr < 17 ? '무엇을 도와드릴까요?' : '오늘 하루 수고 많았어요!';
   return `${hi} ${briefing()}`;
 }
-function openMenu() { say(greeting(), { menu: true, ttl: 0 }); setTimeout(() => { const i = $('#askIn'); i && i.focus(); }, 60); }
+function openMenu(anchor) { say(greeting(), { menu: true, ttl: 0, anchor }); setTimeout(() => { const i = $('#askIn'); i && i.focus(); }, 60); }
 function appendMenu(b) {
   const input = h('input', { id: 'askIn', type: 'text', placeholder: '비서에게 부탁하기…', 'aria-label': '비서에게 부탁하기',
     onkeydown: (e) => { if (e.key === 'Enter' && !e.isComposing && input.value.trim()) { askAssistant(input.value); input.value = ''; } } });
   b.append(
-    h('div', { class: 'acts' },
-      h('button', { type: 'button', onclick: () => { closeBubble(); newNote(); } }, iel('edit', 18), '새 메모'),
-      h('button', { type: 'button', onclick: () => { closeBubble(); toggleAgenda(); } }, iel('cal', 18), '일정'),
-      h('button', { type: 'button', onclick: () => askWeather('오늘 날씨') }, iel('sun', 18), '날씨'),
-      h('button', { type: 'button', onclick: () => { closeBubble(); openBoard(); } }, iel('board', 18), '전체보기'),
-      h('button', { type: 'button', onclick: () => { closeBubble(); openSettings(); } }, iel('gear', 18), '설정')),
     h('div', { class: 'ask' }, input,
       h('button', { class: 'btn primary icon', type: 'button', 'aria-label': '보내기', onclick: () => { if (input.value.trim()) { askAssistant(input.value); input.value = ''; } }, html: ico('send', 16) })),
-    h('div', { class: 'ex' }, '예) 내일 12시까지 회의자료 제출 · 오늘 날씨 어때? · 부산 내일 날씨'));
+    h('div', { class: 'acts' },
+      h('button', { type: 'button', onclick: () => { closeBubble(); openBoard(); } }, iel('board', 16), '전체보기 열기'),
+      h('button', { type: 'button', onclick: () => { closeBubble(); newNote(); } }, iel('edit', 18), '새 메모'),
+      h('button', { type: 'button', onclick: () => { closeBubble(); openSettings(); } }, iel('gear', 18), '비서 설정')));
 }
 function closeBubble() { clearTimeout(bubble.t); bubble = { open: false, menu: false, t: 0 }; $('#bubble').hidden = true; updateHit(); }
 
@@ -1346,8 +1369,8 @@ let overviewAiSearch = null;
 let overviewPinnedOnly = false;
 let overviewEditing = false;
 const overviewCardLabels = {
-  assistant: 'AI 비서',
-  schedule: '일정',
+  assistant: '오늘',
+  schedule: '이번 주 일정',
   memos: '메모 모아보기',
   ai: 'AI 정리',
 };
@@ -1598,7 +1621,7 @@ function overviewSchedule() {
     },
   });
   return h('section', { class: 'overview-card upcoming-card', id: 'overview-schedule', 'aria-label': '일정' },
-    h('header', { class: 'overview-row upcoming-head' }, h('h2', {}, 'Upcoming'), h('span', {}, `오늘 일정 ${todayCount}개`)),
+    h('header', { class: 'overview-row upcoming-head' }, h('h2', {}, '이번 주 일정'), h('span', {}, `오늘 일정 ${todayCount}개`)),
     h('div', { class: 'upcoming-week', role: 'group', 'aria-label': `${fmtDate(monday)}부터 일주일` }, days),
     active.length ? h('ul', { class: 'upcoming-events' }, active.map(({ n, e }) =>
       h('li', {}, h('button', { type: 'button', onclick: () => openNote(n.id) },
@@ -1640,7 +1663,7 @@ async function refreshPetControls(action, value) {
 
 function renderBoard() {
   const m = $('#modal'), ov = boardOverview();
-  const previousScroll = $('.mikkang-overview')?.scrollTop || 0;
+  const previousScroll = $('.overview-grid')?.scrollTop || 0;
   const ai = S.boardAI && S.boardAI.hash === boardHash() ? S.boardAI : null;
   const live = (id) => notesIn(id).filter((n) => !isEmpty(n));
   const secs = [...S.sections]; if (live('').length) secs.push(INBOX);
@@ -1650,24 +1673,42 @@ function renderBoard() {
     secs.map((x) => { const c = secColor(x); return h('button', { type: 'button', 'aria-pressed': String(boardFilter === x.id), style: `--tc:${c.bg};--ti:${c.ink}`, onclick: () => { boardFilter = x.id; renderBoard(); } }, `${x.name} ${live(x.id).length}`); }));
   const groups = h('div', { id: 'overview-groups' });
   const quick = h('input', { type: 'text', placeholder: '메모를 입력하세요', 'aria-label': '빠른 메모', required: true });
-  const avatar = h('span', { class: 'overview-avatar', 'aria-hidden': 'true', html: perchHTML() });
+  const quickSection = h('select', { class: 'overview-quick-section', 'aria-label': '빠른 메모 섹션' },
+    h('option', { value: '' }, '분류 없음'),
+    S.sections.map((section) => h('option', { value: section.id, selected: section.id === openSec }, section.name)));
+  const weatherValue = h('dd', {}, '—');
+  const weatherLabel = h('dt', {}, '날씨');
+  const now = Date.now(), today = startOfDay(new Date(now));
+  const remaining = todayEvents().filter(({ e }) => e.allDay || e.at >= now);
+  const alarm = S.notes.flatMap((n) => n.events).filter((e) => !e.done && e.alarm && e.at > now)
+    .sort((a, b) => a.at - b.at)[0];
+  const search = h('input', { id: 'overview-search', type: 'search', value: overviewQuery, 'aria-label': '메모 검색',
+    placeholder: '메모 검색', oninput: (e) => { overviewQuery = e.target.value; renderOverviewNotes(); },
+    onkeydown: (e) => {
+      if (e.key !== 'Escape' || !e.currentTarget.value) return;
+      e.preventDefault(); e.stopPropagation();
+      overviewQuery = e.currentTarget.value = ''; renderOverviewNotes();
+    } });
   const cards = {
     assistant: h('section', { class: 'overview-card overview-assistant' },
       h('header', { class: 'overview-row' },
-        avatar,
-        h('h2', {}, C.charName(S)),
-        h('button', { class: 'overview-icon', type: 'button', 'aria-label': 'AI 비서', onclick: toggleMenu }, iel('chat', 17))),
-      h('div', { class: 'overview-brief' }, h('b', {}, '오늘 브리핑'), h('p', {}, briefing())),
+        h('h2', {}, '오늘'),
+        h('button', { class: 'overview-avatar', type: 'button', 'aria-label': C.charName(S), onclick: toggleMenu, html: perchHTML() })),
+      h('dl', { class: 'overview-today' },
+        h('div', {}, weatherLabel, weatherValue),
+        h('div', {}, h('dt', {}, '남은 일정'), h('dd', {}, remaining.length)),
+        h('div', {}, h('dt', {}, '다음 알람'), h('dd', {}, alarm ? fmtTime(new Date(alarm.at)) : '—'))),
+      alarm ? h('p', { class: 'overview-muted' }, `다음 알람 · ${alarm.title}`) : null,
       api.petControls ? h('div', { id: 'overview-pet', class: 'overview-pet', hidden: true }) : null,
       h('form', { class: 'overview-quick', onsubmit: (e) => {
         e.preventDefault();
         const text = quick.value.trim();
         if (!text) return;
-        const note = blankNote();
+        const note = blankNote(quickSection.value);
         note.text = text;
         S.notes.unshift(note);
         openNote(note.id);
-      } }, quick, h('button', { class: 'overview-icon', type: 'submit', 'aria-label': '메모 추가' }, iel('send', 16)))),
+      } }, quickSection, quick, h('button', { class: 'overview-icon', type: 'submit', 'aria-label': '메모 추가' }, iel('send', 16)))),
     schedule: overviewSchedule(),
     memos: h('section', { class: 'overview-card' },
       h('header', { class: 'overview-row' }, h('h2', {}, '메모 모아보기'),
@@ -1680,16 +1721,6 @@ function renderBoard() {
           } }, overviewSelecting ? '선택 취소' : '선택') : null,
           h('button', { class: 'btn primary overview-add-note', type: 'button', onclick: () => newNote() }, iel('plus', 14), '메모'))),
       total ? h('div', { class: 'overview-library-tools' },
-        h('input', { id: 'overview-search', type: 'search', value: overviewQuery, 'aria-label': '메모 검색',
-          placeholder: '제목 또는 내용 검색', oninput: (e) => { overviewQuery = e.target.value; renderOverviewNotes(); },
-          onkeydown: (e) => {
-            if (e.key !== 'Escape' || !e.currentTarget.value) return;
-            e.preventDefault();
-            e.stopPropagation();
-            overviewQuery = e.currentTarget.value = '';
-            renderOverviewNotes();
-          },
-        }),
         h('button', { type: 'button', class: 'overview-pinned-only', 'aria-pressed': String(overviewPinnedOnly), onclick: (e) => {
           overviewPinnedOnly = !overviewPinnedOnly;
           e.currentTarget.setAttribute('aria-pressed', String(overviewPinnedOnly));
@@ -1714,8 +1745,14 @@ function renderBoard() {
   };
   const layout = S.settings.overviewLayout;
   const visible = layout.filter((card) => !card.hidden);
+  const grid = h('div', { class: 'overview-grid' },
+    overviewEditing ? overviewLayoutEditor(layout) : null,
+    visible.map(({ id }) => h('div', { class: 'overview-slot', 'data-widget-card': id }, cards[id])),
+    !visible.length && !overviewEditing ? h('p', { class: 'overview-card overview-muted' }, '위젯 편집에서 표시할 항목을 고를 수 있어요.') : null);
   const panel = h('div', { class: 'mikkang-overview', role: 'region', 'aria-label': '전체보기' },
     h('header', { class: 'overview-toolbar' },
+      h('h1', {}, '전체보기'), h('time', { datetime: P.isoLocal(today).slice(0, 10) }, fmtDate(today)),
+      total && visible.some(({ id }) => id === 'memos') ? search : null,
       h('button', { class: 'btn overview-edit', type: 'button', 'aria-expanded': String(overviewEditing), onclick: () => {
         overviewEditing = !overviewEditing;
         renderBoard();
@@ -1723,12 +1760,18 @@ function renderBoard() {
       } }, iel('edit', 14), overviewEditing ? '편집 완료' : '위젯 편집'),
       h('button', { class: 'overview-icon', type: 'button', 'aria-label': '설정', onclick: openSettings }, iel('gear', 16)),
       h('button', { class: 'overview-icon overview-close', type: 'button', 'aria-label': '위젯 접기', onclick: closeBoard }, iel('x', 16))),
-    overviewEditing ? overviewLayoutEditor(layout) : null,
-    visible.map(({ id }) => h('div', { class: 'overview-slot', 'data-widget-card': id }, cards[id])),
-    !visible.length && !overviewEditing ? h('p', { class: 'overview-card overview-muted' }, '위젯 편집에서 표시할 항목을 고를 수 있어요.') : null);
+    grid);
   m.replaceChildren(panel);
+  if (weatherValue.isConnected && api.weather) {
+    const city = (S.settings.weatherCity || '서울').trim();
+    void api.weather(city).then((result) => {
+      if (!weatherValue.isConnected || !result?.ok || !Number.isFinite(result.now?.temp)) return;
+      weatherValue.textContent = `${Math.round(result.now.temp)}°`;
+      weatherLabel.textContent = result.today?.pop == null ? WMO(result.now.code) : `비 ${result.today.pop}%`;
+    }).catch(() => {});
+  }
   renderOverviewNotes();
-  panel.scrollTop = previousScroll;
+  grid.scrollTop = previousScroll;
   refreshOverviewAction();
   void refreshPetControls();
 }
@@ -1820,16 +1863,20 @@ function bindGlobal() {
     await addPhotos(n, fs);
     if (openId !== n.id) openNote(n.id);
   });
-  api.onDisplay(() => { fit(); if (bubble.open) placeBubble(); });
+  api.onDisplay(() => { if (bubble.open) placeBubble(); });
   api.onPetChanged?.(() => { void refreshPetControls(); });
   api.onPetMenuSelected?.(applyPetMenuSelection);
-  api.onPetBriefingRequest?.((id) => api.showPetBriefing(id, briefing()));
+  api.onPetBriefingRequest?.((id) => {
+    const events = todayEvents().filter(({ e }) => e.allDay || e.at >= Date.now());
+    const next = events[0]?.e;
+    api.showPetBriefing(id, next ? `남은 일정 ${events.length}개\n다음 ${next.allDay ? '종일' : fmtTime(new Date(next.at))} ${next.title}` : '오늘 남은 일정이 없어요.');
+  });
   api.onOpenNote((id) => { if (id && byId(id)) openNote(id); });
-  api.onCommand((cmd) => {
+  api.onCommand((cmd, anchor) => {
     if (cmd === 'summon') toggleDock();
     else if (cmd === 'board') openBoard();
     else if (cmd === 'new') newNote();
-    else if (cmd === 'pet-bookmarks') togglePetBookmarks();
+    else if (cmd === 'pet-bookmarks') togglePetBookmarks(anchor);
     else if (cmd === 'assistant') toggleMenu();
     else if (cmd === 'agenda') toggleAgenda();
     else if (cmd === 'settings') openSettings();
@@ -1843,7 +1890,14 @@ function bindGlobal() {
     if (openId) closeNote();
     else if (bubble.open || summoned) closeAll();
   });
-  addEventListener('resize', () => { fit(); if (bubble.open) placeBubble(); });
+  api.onBlur?.(() => { if (bubble.menu) closeBubble(); });
+  document.addEventListener('pointerdown', (e) => { if (bubble.menu && !e.target.closest('#bubble, .overview-avatar')) closeBubble(); }, true);
+  document.addEventListener('selectionchange', () => {
+    const toolbar = $('.basic-format'), editor = $('.basic-editor'), selection = document.getSelection();
+    if (toolbar && editor) toolbar.toggleAttribute('data-selection',
+      !!selection?.rangeCount && !selection.isCollapsed && editor.contains(selection.getRangeAt(0).commonAncestorContainer));
+  });
+  addEventListener('resize', () => { if (bubble.open) placeBubble(); });
 }
 
 async function boot() {
@@ -1858,7 +1912,7 @@ async function boot() {
   api.applySettings({ launchAtLogin: S.settings.launchAtLogin, modeOverride: S.settings.modeOverride, proPreview: S.settings.proPreview });
   bindGlobal();
   applyThemePack(S.settings.themePack, !loaded); // 처음 켤 때는 테마의 캐릭터·펫도 함께
-  applySide(); renderTabs(); fit(); applyMode();
+  applySide(); renderTabs(); applyMode();
   if (info.args?.includes('--overview')) openBoard();
   else void refreshPetControls();
   save();

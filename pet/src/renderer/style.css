@@ -22,37 +22,38 @@ body {
 
 #pet-canvas.is-dragging { cursor: grabbing; }
 
-.speech {
-  position: absolute;
-  box-sizing: border-box;
-  width: max-content;
-  max-width: 140px;
-  padding: 6px 11px;
-  border: 1px solid #d9dfd9;
-  border-radius: 18px 18px 18px 5px;
-  background: #fffdf5;
-  color: #263e43;
-  font: 400 23px/1.05 'Dongle', sans-serif;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-  box-shadow: 0 5px 18px #00000018;
-  pointer-events: none;
-}
-
+.speech,
 .pet-briefing {
   position: absolute;
   box-sizing: border-box;
-  width: min(245px, calc(100vw - 12px));
+  width: min(240px, calc(100vw - 24px));
   padding: 12px 14px;
-  border: 1px solid #b9c5ad;
+  border: 1.5px solid #b9c5ad;
   border-radius: 14px;
   background: #fffdf5;
   color: #354037;
-  box-shadow: 0 5px 18px #26291f26;
-  font: 13px/1.55 system-ui, 'Malgun Gothic', sans-serif;
+  font: 13px/1.45 system-ui, 'Malgun Gothic', sans-serif;
   overflow-wrap: anywhere;
-  pointer-events: none;
+  box-shadow: 0 5px 18px #00000018;
 }
 
-.pet-briefing strong { font-size: 14px; }
-.pet-briefing p { margin: 4px 0 0; }
+.speech { pointer-events: none; }
+.pet-briefing { text-align: left; cursor: pointer; }
+.speech::after,
+.pet-briefing::after {
+  content: '';
+  position: absolute;
+  left: var(--tail-x, 50%);
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  border: inherit;
+  background: inherit;
+  border-top: 0;
+  border-left: 0;
+  transform: translateX(-50%) rotate(45deg);
+  pointer-events: none;
+}
+:is(.speech, .pet-briefing)[data-below]::after { top: -6px; bottom: auto; transform: translateX(-50%) rotate(225deg); }
+.pet-briefing strong { font-size: 11px; }
+.pet-briefing span { margin-top: 4px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: pre-line; }

@@ -21,6 +21,7 @@ export const IPC = {
   PHOTO_DROP: 'pet:photoDrop',
   PHOTO_ERROR: 'pet:photoError',
   OPEN_BOOKMARKS: 'pet:openBookmarks',
+  OPEN_OVERVIEW: 'pet:openOverview',
   REQUEST_BRIEFING: 'pet:requestBriefing',
   SHOW_BRIEFING: 'pet:showBriefing',
   SCHEDULE_SPEECH: 'pet:scheduleSpeech',
@@ -66,7 +67,8 @@ export interface PetAPI {
   runPetMenuAction(action: PetMenuAction): void;
   sendPhotos(photos: DroppedPhoto[]): void;
   photoError(message: string): void;
-  openBookmarks(): void;
+  openBookmarks(anchor: Rect): void;
+  openOverview(): void;
   requestBriefing(id: string): void;
   onBriefing(callback: (id: string, text: string) => void): void;
   onScheduleSpeech(callback: (text: string) => void): void;

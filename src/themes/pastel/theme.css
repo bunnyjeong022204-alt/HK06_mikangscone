@@ -25,8 +25,6 @@
   --mikkang-yellow: #fbf1cf;
   --mikkang-pink: #f9dde3;
   --mikkang-blue: #dcebf8;
-  --mikkang-radius: 20px;
-  --mikkang-shadow: 0 10px 26px #7a68b522;
   --cherry: #e07a8c;
   --glass: #fffdfdf2;
 }
@@ -42,7 +40,6 @@
 :root[data-theme-pack="pastel"] .overview-assistant { background: linear-gradient(160deg, #fde6ea, #efe9fb); }
 :root[data-theme-pack="pastel"] .overview-avatar { border-color: #f3b4bc; background: #fff6f7; }
 :root[data-theme-pack="pastel"] .overview-row h2,
-:root[data-theme-pack="pastel"] .overview-ai h2 { font-weight: 400; font-size: 25px; }
 :root[data-theme-pack="pastel"] .upcoming-card {
   --upcoming-accent: #f6c1cc;
   --upcoming-day-bg: #f5f1fb;
@@ -67,7 +64,7 @@
   box-shadow: 0 1px 2px #0000000d, 0 12px 24px #6c5f8a24;
 }
 :root[data-theme-pack="pastel"] .basic-note-head { color: var(--pi); background: transparent; padding-top: 10px; }
-:root[data-theme-pack="pastel"] .basic-note-caption { font-size: 16px; }
+:root[data-theme-pack="pastel"] .basic-note-caption { font-size: var(--type-detail); }
 :root[data-theme-pack="pastel"] .basic-note .basic-editor { font: 18px/1.6 var(--f-pastel); color: var(--pi); }
 :root[data-theme-pack="pastel"] .basic-format { border-top-color: #00000010; }
 :root[data-theme-pack="pastel"] :is(.basic-icon, .basic-format button, .basic-format .basic-photo):hover { background: #ffffff70; }

@@ -17,7 +17,6 @@
   --f-ui: 'Mono Pretendard', 'Malgun Gothic', sans-serif;
   --f-display: var(--f-ui);
   --f-hand: var(--f-ui);
-  --mikkang-radius: 6px;
   --mikkang-ink: #1c1c1c;
   --mikkang-muted: #6b6b6b;
   --mikkang-paper: #f7f6f2;
@@ -30,7 +29,6 @@
   --mikkang-yellow: #f3e58a;
   --mikkang-pink: #e6e4dd;
   --mikkang-blue: #eae9e4;
-  --mikkang-shadow: 0 1px 3px #1c1c1c1f;
   --mono-ruling: #e4e2da;
   --glass: var(--mikkang-surface);
   --cherry: #6b6241;
@@ -49,7 +47,6 @@
   --mikkang-yellow: #7a6c1f;
   --mikkang-pink: #302f2b;
   --mikkang-blue: #31302d;
-  --mikkang-shadow: 0 1px 3px #0008;
   --mono-ruling: #33322f;
   --cherry: #f3e58a;
 }
@@ -68,7 +65,6 @@
   border: 1px solid var(--mikkang-line);
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) :is(.overview-assistant, .overview-ai) { background: var(--mikkang-sage-light); }
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .overview-card { border-radius: 7px; }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .theme-card[aria-pressed="true"] { border-color: var(--mikkang-action); }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .upcoming-card {
   --upcoming-accent: var(--mikkang-yellow);
@@ -76,36 +72,15 @@
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card {
   container-type: size;
-  background: var(--mono-paper-art) center / contain no-repeat;
+  background: var(--mono-paper-art) center / 100% 100% no-repeat;
   border: 0;
   border-radius: 0;
   color: var(--mikkang-ink);
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet {
-  /* Match the centered 370 × 470 artwork, including its transparent margins. */
-  --mono-art-width: min(100cqw, calc(100cqh * 370 / 470));
-  --mono-art-height: min(100cqh, calc(100cqw * 470 / 370));
-  --mono-inset-inline: calc((100cqw - var(--mono-art-width)) / 2 + var(--mono-art-width) * .11);
-  --mono-inset-top: calc((100cqh - var(--mono-art-height)) / 2 + var(--mono-art-height) * .18);
-  --mono-inset-bottom: calc((100cqh - var(--mono-art-height)) / 2 + var(--mono-art-height) * .12);
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet.basic-note {
-  --mono-note-height: max(180px, calc(100vh - min(84px, 10vh) - 16px));
-  --mono-note-width: min(480px, calc(100% - 32px), calc(var(--mono-note-height) * 370 / 470));
-  width: var(--mono-note-width);
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet.basic-note.basic-details {
-  --mono-note-height: max(180px, calc(100vh - min(84px, 10vh) - 156px));
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .side-right .sheet.basic-note {
-  right: min(150px, max(16px, calc(100% - var(--mono-note-width) - 16px)));
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .side-left .sheet.basic-note {
-  left: min(150px, max(16px, calc(100% - var(--mono-note-width) - 16px)));
-}
-:root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .basic-note .card {
-  height: auto;
-  aspect-ratio: 370 / 470;
+  --mono-inset-inline: 11cqw;
+  --mono-inset-top: 18cqh;
+  --mono-inset-bottom: 12cqh;
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card :is(.paper, .backing, .clip, .orn) { display: none; }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .sheet:not(.basic-note) .card .content {
@@ -142,10 +117,10 @@
   background: linear-gradient(transparent 62%, var(--mikkang-yellow) 62% 95%, transparent 95%);
 }
 :root:is([data-theme-pack="mono-sketch"], [data-theme-pack="mono-sketch-dark"]) .card .body {
-  background-image: repeating-linear-gradient(to bottom, transparent 0 27px, var(--mono-ruling) 27px 28px);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 23px, var(--mono-ruling) 23px 24px);
   background-attachment: local;
   color: inherit;
-  line-height: 28px;
+  line-height: 24px;
 }
 :root[data-theme-pack="mono-sketch-dark"] .card :is(.basic-note-caption, .kw, .body, .basic-icon, .basic-format button, .basic-photo) {
   color: #f8f7f3;

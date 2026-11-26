@@ -41,7 +41,31 @@ interface Companion {
   toyPlay?: { origin: Vec2; position: Vec2; strike: Vec2; aim: Vec2; side: -1 | 1; hit: boolean };
 }
 
-const BRIEFING_HOLD_MS = 450;
+const PET_SIZE = 72;
+const BRIEFING_HOLD_MS = 500;
+
+function sizeSpecies(species: SpeciesConfig): SpeciesConfig {
+  const idle = species.animations.idle;
+  const scale = species.behavior.spriteScale;
+  const ratio = PET_SIZE / (idle?.displaySize ?? (idle?.frameWidth ?? 475) * scale);
+  function resizeClips<T extends Partial<Record<string, SpeciesAnimationDef>>>(clips: T): T {
+    return Object.fromEntries(Object.entries(clips).map(([key, clip]) => [
+      key, clip?.displaySize ? { ...clip, displaySize: clip.displaySize * ratio } : clip,
+    ])) as T;
+  }
+  return { ...species, behavior: { ...species.behavior, spriteScale: scale * ratio },
+    animations: resizeClips(species.animations), motions: species.motions && resizeClips(species.motions) };
+}
+
+function positionSpeech(el: HTMLElement, center: number, top: number, bottom: number, bounds: Rect) {
+  const width = el.offsetWidth, height = el.offsetHeight;
+  const x = Math.max(12, Math.min(bounds.width - width - 12, center - width / 2));
+  const below = top < height + 22;
+  el.style.left = `${x}px`;
+  el.style.top = `${below ? Math.min(bounds.height - height - 12, bottom + 10) : top - height - 10}px`;
+  el.style.setProperty('--tail-x', `${Math.max(8, Math.min(width - 8, center - x))}px`);
+  el.toggleAttribute('data-below', below);
+}
 const HOVER_EXIT_PADDING = 5;
 
 const REACTION_LINES = {
@@ -74,12 +98,11 @@ async function main(): Promise<void> {
   const renderer = new PetRenderer(canvas);
   const effects = new PetEffects(canvas.getContext('2d')!);
   const bounds = await window.petAPI.getWorkArea();
-  const petSize = (pet: Companion) => pet.species.animations.idle?.displaySize ?? (pet.species.animations.idle?.frameWidth ?? 475) * pet.species.behavior.spriteScale;
   const floorX = (x: number, size: number) => Math.max(0, Math.min(Math.max(0, bounds.width - size), x));
   const petPosition = (pet: Companion) => {
     const activePosition = pet.toyPlay?.position ?? pet.airborne?.position;
     if (activePosition) return activePosition;
-    const size = petSize(pet);
+    const size = PET_SIZE;
     return { x: floorX(pet.behavior.getPosition().x, size), y: Math.max(0, bounds.height - size) };
   };
   let pets: Companion[] = [];
@@ -94,6 +117,10 @@ async function main(): Promise<void> {
   let held: { pet: Companion; pointerId: number; start: Vec2; offset: Vec2; since: number; dragging: boolean; samples: PointerSample[] } | null = null;
   let rightPress: { pet: Companion; pointerId: number; timer: number; briefed: boolean } | null = null;
   let activeBriefing: { pet: Companion; until: number } | undefined;
+  let briefingHover: { pet: Companion; since: number; requested: boolean } | undefined;
+  let briefingHold: Companion | undefined;
+  let briefingLeaveAt = Infinity;
+  let briefingBounds: DOMRect | undefined;
   let clickThrough = true;
   let hoveredPet: Companion | undefined;
   let toyEnabled = false;
@@ -116,25 +143,33 @@ async function main(): Promise<void> {
   }
   const petMenu = new PetQuickMenu(toggleToy);
   const emptyPaper = new EmptyRosterPaper((anchor) => petMenu.open(anchor, false, false, true));
-  const briefingCard = document.createElement('div');
+  const briefingCard = document.createElement('button');
   const briefingTitle = document.createElement('strong');
-  const briefingBody = document.createElement('p');
+  const briefingBody = document.createElement('span');
   briefingCard.className = 'pet-briefing';
   briefingCard.hidden = true;
-  briefingCard.setAttribute('role', 'status');
+  briefingCard.type = 'button';
+  briefingCard.setAttribute('aria-label', '오늘 브리핑 · 전체보기 열기');
+  briefingCard.addEventListener('click', () => {
+    activeBriefing = undefined;
+    briefingBounds = undefined;
+    window.petAPI.openOverview();
+  });
   briefingTitle.textContent = '오늘 브리핑';
   briefingCard.append(briefingTitle, briefingBody);
   document.body.append(briefingCard);
   window.petAPI.onBriefing((id, text) => {
     const pet = pets.find((item) => item.species.id === id);
-    if (!pet) return;
+    if (!pet || (briefingHold !== pet && briefingHover?.pet !== pet)) return;
     briefingBody.textContent = text;
-    activeBriefing = { pet, until: performance.now() + 8000 };
+    activeBriefing = { pet, until: briefingHold === pet ? performance.now() + 8000 : Infinity };
+    briefingHold = undefined;
+    briefingLeaveAt = Infinity;
   });
   let nextPointerPoll = 0;
-  const pollPointer = () => !held && (clickThrough || !!hoveredPet || pets.some((pet) => pet.chasing));
+  const pollPointer = () => !held && (clickThrough || !!hoveredPet || !!activeBriefing || pets.some((pet) => pet.chasing));
   document.addEventListener('pointermove', (event) => {
-    if (sceneReady && pets.length === 0 && event.isPrimary) {
+    if (sceneReady && (pets.length === 0 || event.target === briefingCard || briefingCard.contains(event.target as Node)) && event.isPrimary) {
       pointer = { x: event.clientX, y: event.clientY };
       lastPointerAt = performance.now();
     }
@@ -217,6 +252,9 @@ async function main(): Promise<void> {
   window.petAPI.onSpeciesLoaded((loaded) => {
     cancelRightPress();
     activeBriefing = undefined;
+    briefingHover = undefined;
+    briefingHold = undefined;
+    briefingBounds = undefined;
     briefingCard.hidden = true;
     sceneReady = true;
     petMenu.close();
@@ -225,11 +263,12 @@ async function main(): Promise<void> {
     for (const pet of pets) pet.bubble.remove();
     reply = null; held = null; toyProp = undefined; renderer.clearCache(); chatter = loaded.chatter;
     const dismissed = new Set(loaded.dismissedIds);
-    pets = [loaded, ...(loaded.companions ?? [])].filter(({ id }) => !dismissed.has(id)).map((species, index) => {
+    pets = [loaded, ...(loaded.companions ?? [])].filter(({ id }) => !dismissed.has(id)).map((original, index) => {
+      const species = sizeSpecies(original);
       renderer.preload(species.motions?.fireBreath);
       const state = new PetStateMachine();
       const animation = new AnimationController();
-      const size = species.animations.idle?.displaySize ?? (species.animations.idle?.frameWidth ?? 475) * species.behavior.spriteScale;
+      const size = PET_SIZE;
       const x = floorX(bounds.width * 0.25 + index * 160, size);
       const patrolDirection = species.motions?.frontWalk && species.motions.backWalk ?
         (x > (bounds.width - size) / 2 ? 1 : -1) : undefined;
@@ -245,6 +284,10 @@ async function main(): Promise<void> {
         nextLookAt: 0, pointerDistance: Infinity };
     });
     nextChat = performance.now() + 6000; nextMeeting = performance.now() + 20000; nextEncounter = performance.now() + 4000;
+    if (pets.length && !localStorage.getItem('pet-context-tip')) {
+      localStorage.setItem('pet-context-tip', '1');
+      say(pets[0], '나를 우클릭해 봐!', performance.now());
+    }
   });
   window.petAPI.onPetDismissed((id) => {
     const departing = pets.find((pet) => pet.species.id === id);
@@ -271,7 +314,7 @@ async function main(): Promise<void> {
     const pose = pet.cue && poseFor(pet.cue, previous, pet.species);
     const pos = petPosition(pet);
     const scale = pet.species.behavior.spriteScale;
-    const box = pose && frame ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize(pet)) : renderer.getSpriteBounds(def, pos, scale);
+    const box = pose && frame ? renderer.getPoseBounds(def, frame, pos, scale, pose, PET_SIZE) : renderer.getSpriteBounds(def, pos, scale);
     // Keep the current target through small frame-to-frame changes at its edge.
     const padding = pet === hoveredPet ? HOVER_EXIT_PADDING : 0;
     return pointer.x >= box.x - padding && pointer.x <= box.x + box.width + padding &&
@@ -313,7 +356,7 @@ async function main(): Promise<void> {
     reactWithLine(grab.pet, 'grab', performance.now());
   }
   function positionHeld(grab: NonNullable<typeof held>) {
-    const size = petSize(grab.pet);
+    const size = PET_SIZE;
     grab.pet.airborne = { position: {
       x: Math.max(0, Math.min(bounds.width - size, pointer.x - grab.offset.x)),
       y: Math.max(0, Math.min(bounds.height - size, pointer.y - grab.offset.y)),
@@ -354,6 +397,7 @@ async function main(): Promise<void> {
       const timer = window.setTimeout(() => {
         if (!rightPress) return;
         rightPress.briefed = true;
+        briefingHold = pet;
         window.petAPI.requestBriefing(pet.species.id);
       }, BRIEFING_HOLD_MS);
       rightPress = { pet, pointerId: event.pointerId, timer, briefed: false };
@@ -378,11 +422,14 @@ async function main(): Promise<void> {
   });
   function release(event: Event) {
     if (rightPress && (!(event instanceof PointerEvent) || event.pointerId === rightPress.pointerId)) {
-      const { briefed } = rightPress;
+      const { briefed, pet } = rightPress;
       cancelRightPress();
       if (event instanceof PointerEvent && event.type === 'pointerup' && event.button === 2 && !briefed) {
         activeBriefing = undefined;
-        window.petAPI.openBookmarks();
+        briefingHover = { pet, since: performance.now(), requested: true };
+        const pos = petPosition(pet);
+        briefingBounds = undefined;
+        window.petAPI.openBookmarks({ ...pos, width: PET_SIZE, height: PET_SIZE });
       }
     }
     if (!held || (event instanceof PointerEvent && event.pointerId !== held.pointerId)) return;
@@ -393,11 +440,11 @@ async function main(): Promise<void> {
       hush(pet);
       const velocity = event.type === 'pointerup' ? releaseVelocity(samples) : { x: 0, y: 0 };
       const { x, y } = velocity;
-      const floor = Math.max(0, bounds.height - petSize(pet));
+      const floor = Math.max(0, bounds.height - PET_SIZE);
       pet.airborne.velocity = launchVelocity(velocity, floor - pet.airborne.position.y);
       pet.throwSpeed = Math.hypot(x, y);
       pet.collisionPath = event.type !== 'pointerup' ? undefined : pet.throwSpeed > 0 ? 'throw' :
-        wallSide(pet.airborne.position, petSize(pet), bounds.width, bounds.height);
+        wallSide(pet.airborne.position, PET_SIZE, bounds.width, bounds.height);
       pet.impactSpeed = 0;
       pet.impactSide = x < 0 ? -1 : 1;
       if (pet.throwSpeed > 0) cue(pet, 'fly', performance.now(), pet.impactSide, pet.throwSpeed / 1300);
@@ -434,7 +481,7 @@ async function main(): Promise<void> {
     const now = performance.now();
     if ((pet.nextBurstAt ?? 0) > now) return;
     const pos = petPosition(pet);
-    const size = petSize(pet);
+    const size = PET_SIZE;
     const side = pos.x < size * .6 ? 1 : pos.x + size * 1.65 > bounds.width || pet.facing >= 5 ? -1 : 1;
     pet.nextBurstAt = now + 1000;
     pet.cue = undefined;
@@ -462,7 +509,7 @@ async function main(): Promise<void> {
   window.addEventListener('blur', release);
 
   function bodyBounds(pet: Companion, position: Vec2): Rect {
-    const size = petSize(pet);
+    const size = PET_SIZE;
     const frame = pet.animation.getCurrentFrameRect(pet.facing);
     const box = pet.clip?.pixelArt && frame ? renderer.getPaintBounds(pet.clip, frame, position, pet.species.behavior.spriteScale) :
       { x: position.x + size * 0.15, y: position.y + size * 0.15, width: size * 0.7, height: size * 0.85 };
@@ -478,7 +525,7 @@ async function main(): Promise<void> {
     for (const target of pets) {
       if (target === pet || target.airborne || held?.pet === target) continue;
       const position = petPosition(target);
-      const wall = wallSide(position, petSize(target), bounds.width, bounds.height);
+      const wall = wallSide(position, PET_SIZE, bounds.width, bounds.height);
       if (!canHitPet(pet.collisionPath, from, next.position, position, wall)) continue;
       const contact = petContact(body, travel, bodyBounds(target, position));
       if (contact && (!closest || contact.time < closest.time)) closest = { target, position, wall, ...contact };
@@ -521,7 +568,7 @@ async function main(): Promise<void> {
       if (now < pet.cue.end) return;
       cue(pet, 'wallFall', now, pet.impactSide);
     }
-    const size = petSize(pet);
+    const size = PET_SIZE;
     const maxY = Math.max(0, bounds.height - size);
     const dt = delta / 1000;
     const next = advanceFlight(pet.airborne, dt, Math.max(0, bounds.width - size), maxY);
@@ -568,7 +615,7 @@ async function main(): Promise<void> {
     const clips = pet.species.motions;
     if (!clips?.toyWatch || !clips.toyPounce || held?.pet === pet || pet.airborne || !hasToy(pet)) return false;
     const play = pet.toyPlay;
-    const size = petSize(pet);
+    const size = PET_SIZE;
     const floor = Math.max(0, bounds.height - size);
     const maxX = Math.max(0, bounds.width - size);
     const xInBounds = (x: number) => Math.min(maxX, Math.max(0, x));
@@ -657,7 +704,7 @@ async function main(): Promise<void> {
     }
     const cat = toyOwner();
     fishingPose = cat?.species.fishingToy && pointerInArea()
-      ? fishingRig.update(toyPointer, petSize(cat), bounds.width, bounds.height, delta) : undefined;
+      ? fishingRig.update(toyPointer, PET_SIZE, bounds.width, bounds.height, delta) : undefined;
   }
 
   function renderToy(delta: number) {
@@ -676,14 +723,14 @@ async function main(): Promise<void> {
     propAnimation.update(delta);
     const frame = propAnimation.getCurrentFrameRect();
     if (!frame) return;
-    const size = petSize(cat);
+    const size = PET_SIZE;
     renderer.render(toyProp, frame, { x: toyPointer.x - size * 0.91, y: toyPointer.y - size * 0.92 }, cat.species.behavior.spriteScale);
   }
 
   function cueForMovement(pet: Companion, now: number, after: Vec2, previousState: PetState) {
     const state = pet.state.getState();
     const personality = personalityOf(pet.species);
-    const size = petSize(pet);
+    const size = PET_SIZE;
     const onFloor = after.y >= bounds.height - size - 0.5;
     const side = after.x < bounds.width / 2 ? -1 : 1;
     if (state === 'sleep') {
@@ -721,8 +768,8 @@ async function main(): Promise<void> {
       const b = walkers.find((other) => {
         const right = petPosition(other);
         const gap = right.x - left.x;
-        return other.facing === 6 && gap > 0 && gap < (petSize(a) + petSize(other)) * 0.55 &&
-          left.y + petSize(a) >= bounds.height - 1 && right.y + petSize(other) >= bounds.height - 1;
+        return other.facing === 6 && gap > 0 && gap < (PET_SIZE + PET_SIZE) * 0.55 &&
+          left.y + PET_SIZE >= bounds.height - 1 && right.y + PET_SIZE >= bounds.height - 1;
       });
       if (!b) continue;
       cue(a, 'meet', now, 1);
@@ -736,8 +783,11 @@ async function main(): Promise<void> {
 
   function updateMouseTarget() {
     hoveredPet = hit();
+    const overBriefing = !!activeBriefing && !!briefingBounds &&
+      pointer.x >= briefingBounds.left && pointer.x <= briefingBounds.right &&
+      pointer.y >= briefingBounds.top && pointer.y <= briefingBounds.bottom;
     const capturingWheel = toyEnabled && pointerInArea() && !!toyOwner()?.species.fishingToy;
-    const ignore = !held && !rightPress && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hoveredPet;
+    const ignore = !held && !rightPress && !petMenu.isOpen && !capturingWheel && !emptyPaper.captures(pointer) && !hoveredPet && !overBriefing;
     if (ignore !== clickThrough) { clickThrough = ignore; window.petAPI.setClickThrough(ignore); }
     canvas.classList.toggle('is-dragging', !!held?.dragging);
   }
@@ -747,7 +797,7 @@ async function main(): Promise<void> {
       pet.state.transition('idle');
       return;
     }
-    const size = petSize(pet);
+    const size = PET_SIZE;
     const target = floorX(pointer.x - size / 2, size);
     const distance = pet.behavior.getPosition().x;
     const gap = target - distance;
@@ -802,7 +852,22 @@ async function main(): Promise<void> {
       else nextChat = now + 1500;
     }
     encounter(now);
-    if (activeBriefing && now >= activeBriefing.until) activeBriefing = undefined;
+    const hover = held || rightPress || petMenu.isOpen ? undefined : hit();
+    if (briefingHover?.pet !== hover) briefingHover = hover ? { pet: hover, since: now, requested: false } : undefined;
+    if (briefingHover && !briefingHover.requested && now - briefingHover.since >= 500) {
+      briefingHover.requested = true;
+      if (activeBriefing?.pet !== briefingHover.pet) window.petAPI.requestBriefing(briefingHover.pet.species.id);
+    }
+    if (activeBriefing) {
+      const overCard = briefingBounds && pointer.x >= briefingBounds.left && pointer.x <= briefingBounds.right &&
+        pointer.y >= briefingBounds.top && pointer.y <= briefingBounds.bottom;
+      if (hover === activeBriefing.pet || overCard) briefingLeaveAt = Infinity;
+      else if (briefingLeaveAt === Infinity) briefingLeaveAt = now + 240;
+      if (now >= activeBriefing.until || (activeBriefing.until === Infinity && now >= briefingLeaveAt) ||
+          held || petMenu.isOpen || !pets.includes(activeBriefing.pet)) {
+        activeBriefing = undefined; briefingBounds = undefined;
+      }
+    }
     briefingCard.hidden = !activeBriefing;
     for (const pet of pets) {
       finishCue(pet, now);
@@ -814,7 +879,7 @@ async function main(): Promise<void> {
         followCursor(pet, delta);
       } else if (playWithToy(pet, now, delta)) { /* Toy pose drives position while active. */ }
       else if (held?.pet !== pet && !pet.cue && now >= pet.speakingUntil) {
-        const size = petSize(pet);
+        const size = PET_SIZE;
         pet.behavior.update(delta, { x: 0, y: 0, width: Math.max(bounds.width, size), height: bounds.height }, size);
         cueForMovement(pet, now, petPosition(pet), previousState);
       }
@@ -844,12 +909,12 @@ async function main(): Promise<void> {
       const view = leftSheet ? { ...def, sheet: leftSheet } : def;
       const pos = after;
       if (frame) renderer.render(view, frame, pos, scale,
-        held?.pet === pet && held.dragging ? held.offset : undefined, pose, petSize(pet), mirror);
+        held?.pet === pet && held.dragging ? held.offset : undefined, pose, PET_SIZE, mirror);
       if (pet.cue?.key === 'fireBreath' && pet.firePending) {
         const mouth = pet.species.behavior.fireMouth ?? { x: .74, y: .42, frame: 1 };
         if (pet.animation.currentFrameIndex >= mouth.frame) {
           const side = pet.cue.side;
-          const size = petSize(pet);
+          const size = PET_SIZE;
           effects.burst('fire', {
             x: pos.x + size * (side < 0 ? 1 - mouth.x : mouth.x),
             y: pos.y + size * mouth.y,
@@ -858,16 +923,13 @@ async function main(): Promise<void> {
         }
       }
       pet.bubble.hidden = activeBriefing?.pet === pet || resting(pet) || now >= pet.until;
-      const head = frame && pose ? renderer.getPoseBounds(def, frame, pos, scale, pose, petSize(pet)).y :
+      const head = frame && pose ? renderer.getPoseBounds(def, frame, pos, scale, pose, PET_SIZE).y :
         frame && def.pixelArt ? renderer.getPaintBounds(def, frame, pos, scale).y : pos.y;
       if (activeBriefing?.pet === pet) {
-        const width = briefingCard.offsetWidth;
-        briefingCard.style.left = `${Math.max(6, Math.min(bounds.width - width - 6, pos.x + (petSize(pet) - width) / 2))}px`;
-        briefingCard.style.top = `${Math.max(6, head - briefingCard.offsetHeight - 8)}px`;
+        positionSpeech(briefingCard, pos.x + PET_SIZE / 2, head, pos.y + PET_SIZE, bounds);
+        briefingBounds = briefingCard.getBoundingClientRect();
       }
-      const bubbleWidth = pet.bubble.offsetWidth || 190;
-      pet.bubble.style.left = `${Math.max(4, Math.min(bounds.width - bubbleWidth - 4, pos.x + petSize(pet) / 2 - bubbleWidth / 2))}px`;
-      pet.bubble.style.top = `${Math.max(4, head - pet.bubble.offsetHeight - 4)}px`;
+      if (!pet.bubble.hidden) positionSpeech(pet.bubble, pos.x + PET_SIZE / 2, head, pos.y + PET_SIZE, bounds);
     }
     renderToy(delta);
     effects.draw(now);
